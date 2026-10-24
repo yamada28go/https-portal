@@ -65,7 +65,7 @@ P2の成果は、PRで `lint-and-unit` と `docker-smoke` が自動起動し、�
 
 ### 3.2 Docker試験の独立化
 
-共通入口の `dev/check_p2_integration.ps1` がDockerを操作し、`spec/ci/compose.yaml` のportal、HTTP echo、testerを実行する。testerへDocker socketを渡さない。WindowsではPowerShell、Linuxではpwshで同じ入口を使う。P2-03基盤は実装済み・実Docker受入待ち。[実行手順](34-integration-guide-ja.md)を参照。
+共通入口の `dev/check_p2_integration.ps1` がDockerを操作し、`spec/ci/compose.yaml` のportal、HTTP echo、testerを実行する。testerへDocker socketを渡さない。WindowsではPowerShell、Linuxではpwshで同じ入口を使う。P2-03基盤は実Docker受入完了。[実行手順](34-integration-guide-ja.md)を参照。
 
 - 製品はルートDockerfileから一度ビルドし、全fixtureで同じローカルタグを使う。レジストリ公開は不要。
 - echoはpath/query、Host、X-Real-IP、X-Forwarded-For、X-Forwarded-Protoを判定可能な形式で返す。環境変数を全量返す実装は避ける。
@@ -240,3 +240,7 @@ dev/docs/
 - [Required status checks](https://docs.github.com/en/enterprise-cloud%40latest/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)：workflowのpath filterによるPendingと必須チェック。
 - [Workflow artifacts](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts)：診断成果物の取得・保持。14日は本計画の提案。
 - [GitHub Actionsとパッケージ](https://docs.github.com/en/packages/managing-github-packages-using-github-actions-workflows/publishing-and-installing-a-package-with-github-actions)：Action参照のcommit SHA固定の推奨を確認。公開工程はP2対象外。
+
+## P2-04の実装状況
+
+I01〜I08の試験を実装し、全scenarioの設定と構文を静的確認済み。実Dockerの受入は利用者による実行待ち。[35 結合試験の内容と実行手順](35-integration-contracts-ja.md)を参照。実行時の隔離方針は維持し、build時の依存物取得だけ外部通信を必要とする。

@@ -5,7 +5,7 @@ services:
     pull_policy: never
     environment:
       STAGE: local
-      DOMAINS: portal.test
+      DOMAINS: ${IT_DOMAINS:-portal.test}
       FORCE_RENEW: "false"
       ACCESS_LOG: stdout
       ERROR_LOG: stderr
@@ -15,9 +15,10 @@ services:
     volumes:
       - certificates:/var/lib/https-portal
       - nginx-logs:/var/log/nginx
+      - site:/var/www/vhosts
     networks:
       isolated:
-        aliases: [portal.test]
+        aliases: [portal.test, proxy.test, auth.test, tls.test, static.test]
   echo:
     image: ${IT_TEST_IMAGE:?Set IT_TEST_IMAGE}
     pull_policy: never
@@ -27,6 +28,23 @@ services:
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     tmpfs: [/tmp]
+    networks: [isolated]
+  prepare:
+    image: ${IT_TEST_IMAGE:?Set IT_TEST_IMAGE}
+    pull_policy: never
+    profiles: [test]
+    command: [ruby, /opt/it/prepare.rb]
+    user: "0:0"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    environment:
+      IT_SCENARIO: ${IT_SCENARIO:-local}
+    volumes:
+      - certificates:/fixture/certificates
+      - site:/fixture/site
+      - public:/fixture/public
     networks: [isolated]
   tester:
     image: ${IT_TEST_IMAGE:?Set IT_TEST_IMAGE}
@@ -40,7 +58,10 @@ services:
     tmpfs: [/tmp]
     environment:
       IT_TARGET_HOST: portal.test
+      IT_SCENARIO: ${IT_SCENARIO:-local}
       IT_STARTUP_TIMEOUT_SECONDS: ${IT_STARTUP_TIMEOUT_SECONDS:-180}
+    volumes:
+      - public:/public
     networks: [isolated]
 networks:
   isolated:
@@ -48,3 +69,5 @@ networks:
 volumes:
   certificates:
   nginx-logs:
+  site:
+  public:

@@ -2,7 +2,51 @@
 
 [文書一覧](../00-index-ja.md) / [実施手順](30-execution-guide-ja.md) / [詳細計画](31-implementation-plan-ja.md)
 
-## 最新：P2-03 Docker試験基盤の受入完了（2026-10-24）
+## P2-04 all再実行と更新呼び出しPATHの修正（2026-10-24）
+
+- 実行ID：20261024t095715z-47007c79。local/redirect/proxy/auth/ca/persistenceの先頭6件がresult/diagnostics/cleanup=passed。caはkeyMatches=trueで、chained.crt配置の修正も実確認できた。
+- renewalのbeforeは成功。renew-skipでwith-contenv内部のifelseをPATHから見つけられずexit 127となったため、更新処理・after検証には未到達。後続staticは未実行。
+- 試験のCompose execに-e PATH=/command:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/binを指定した。製品の更新処理やcron設定は変更しない。skipログと証明書fingerprint比較は維持する。
+- PowerShell構文を確認。全7件ともdiagnostics/cleanup=passed、container/network/volumeの残存なし。修正後の実Docker受入は未確認。
+- 次の操作：renewal単独、成功後にallを実行する。
+
+## P2-04 CA再実行と証明書リンクの修正（2026-10-24）
+
+- 実行ID：20261024t093959z-08375cbd。公開DHパラメータの検査は成功し、前回の生成待ちは解消した。
+- Nginxが読むtls.test/local/chained.crtが未配置で起動に失敗した。最終probeの名前解決失敗はportal終了後の症状で、公開DNSの問題ではない。
+- 試験fixtureにsigned.crt（leaf＋intermediate）とdomain.keyだけを配置していた。製品は既存証明書を検出すると初回のchain_certsを通らず、Nginxはchained.crtを参照するため、fixtureにも同リンクが必要だった。
+- prepare.rbにchained.crt → signed.crtの相対リンクを追加した。製品コード・CAの生成/信頼検証・隔離設定は変更していない。
+- Ruby静的構文を確認。cleanup=passed、container/network/volumeの残存なし。コンテナ終了により診断はpartial。修正後の実Docker受入は未確認。
+- 次の操作：ca単独を再実行し、成功後にallを実行する。
+
+## P2-04 初回実行とDH生成待ちの修正（2026-10-24）
+
+- 実行ID：20261024t091940z-ba10ebe0。local、redirect、proxy、authの4件はresult/diagnostics/cleanup=passed。
+- caは443番ポートへの接続拒否が続き、起動待ち180秒で失敗。portalログ末尾は2048-bit DHパラメータ生成中で、CAのチェーン・誤CA・誤名検証には到達していない。
+- 5件ともcleanup=passed、container/network/volumeの残存なし。caの設定ファイル診断は生成前のためpartial。後続persistence/renewal/staticは未実行。
+- prepare.rbで全scenarioに公開DHパラメータを事前配置するよう修正。RFC 3526 section 3の2048-bit MODP group 14、generator=2を使用。秘密鍵ではなく公開値で、試験用certificate volume内だけに保存する。
+- Nodeの既知groupとの完全一致、2048bit、安全素数とgenerator、Ruby静的構文を確認。製品コード・期限・外部通信の方針は変更なし。DHの新規生成自体はこの結合試験の対象から外れる。
+- 修正後の実Docker受入は未確認。ca単独を再実行し、成功後にallを実行する。
+
+## P2-04 重要な結合試験を追加・実行待ち（2026-10-24）
+
+利用者の指示でP2-04を実装した。試験中の外部通信遮断・公開DNS/公開ACME不使用・イメージ非公開は維持する。初回buildの依存取得のみ外部通信を伴う。
+
+| 項目 | 実装/確認 |
+|---|---|
+| Scenario | 既存local/never-readyに加えredirect、proxy、auth、ca、persistence、renewal、static。allでlocalを含む8件 |
+| CA | 一時root/intermediate/leafと誤CA、rootのみの信頼、誤名拒否、公開鍵比較。CA秘密鍵はvolumeへ保存しない |
+| 状態試験 | public volumeの初回fingerprintと再作成/renew後を比較。skipログだけで成功にしない |
+| 分離 | 毎回別project・internal network・専用volume。testerはpublic volumeのみ。prepareだけ試験用秘密鍵volumeへ書く |
+| ログ | 架空資格情報とBasic tokenを表示/保存時にマスク。psは選択フィールドのみ |
+| 設定 | -Scenario all -ValidateOnlyで8件のCompose展開/安全ガード成功。コンテナは起動していない |
+| 静的検査 | Prismによる新規Ruby3ファイルの構文、PowerShell 7/Windows PowerShell 5.1の構文 |
+| 補助検証 | 両PowerShellで引数・非0・期限、マスク、testerへの秘密鍵volume拒否、安全ガードを確認。Dockerを起動しない代役プロセスを使用 |
+| 未確認 | 新規scenarioの実build・HTTP/TLS実通信・CA生成/拒否・再作成/renew・全cleanup |
+
+[実行・受入手順](35-integration-contracts-ja.md)に従って利用者が実行する。P2-04は実装済み・実行受入待ち。製品コード・依存バージョン・P1の113例・Actionsジョブは変更していない。
+
+## P2-03 Docker試験基盤の受入完了（2026-10-24）
 
 通常ケースの独立2回成功と、never-readyの期限切れ失敗・診断保存・cleanupを保存ログとJSONで照合した。**P2-03は完了。** P2-04の重要契約追加とP2-05のDocker CI接続はまだ実施していない。P2-02の残る受入項目も別途追跡する。
 

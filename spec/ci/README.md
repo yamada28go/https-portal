@@ -47,3 +47,5 @@ Tests / lint-and-unitも同じスクリプトを使用する。[CI実行・受�
 ## Docker試験基盤（P2-03）
 
 プロジェクトルートで `.\dev\check_p2_integration.ps1 -Repeat 2`。[実行・受入手順](../../dev/docs/30-p2-ci/34-integration-guide-ja.md)を参照。実Dockerの起動確認は利用者側で行う。
+
+P2-04の重要契約を一括実行：`.\dev\check_p2_integration.ps1 -Scenario all`。[試験内容・受入手順](../../dev/docs/30-p2-ci/35-integration-contracts-ja.md)を参照。実Dockerの実行受入は利用者側で行う。

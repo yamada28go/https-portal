@@ -53,13 +53,13 @@ never-readyではresult=failedで、probeログにReadiness timed out、cleanup=
 
 internal networkに既定ルートがなくても製品の初期化が進むよう、dockerhostは試験コンテナ自身の127.0.0.1へ向ける。ホストへの経路を追加する設定ではない。
 
-ユーザーの.envを読み込ませず、今回生成したfixture.envと明示値を使う。実行開始前に、外部network/volume・ports・bind mount・非local stage等の不適切な設定を拒否する。取得はbuild工程だけで、Compose runtimeのpull_policyはnever。
+ユーザーの.envを読み込ませず、今回生成したfixture-SCENARIO.envと明示値を使う。実行開始前に、外部network/volume・ports・bind mount・非local stage等の不適切な設定を拒否する。取得はbuild工程だけで、Compose runtimeのpull_policyはnever。
 
 ## 起動判定の範囲
 
 Nginxのプロセスだけではreadyにしない。portal.testのSAN/ホスト名、有効期間、自己署名の一致を確認し、自己署名leafをpinしたHTTPSで200とwelcome本文を確認する。echoにも内部HTTPで到達することを確認する。
 
-local証明書を最初に取得するbootstrap通信だけはVERIFY_NONEを使い、その後のHTTP取得はVERIFY_PEERとホスト名検証を有効にする。これは試験専用networkでの起動判定であり、独立CAでの信頼・誤CA拒否を検証したことにはしない。独立CA・認証・proxyの重要契約はP2-04で追加する。
+local証明書を最初に取得するbootstrap通信だけはVERIFY_NONEを使い、その後のHTTP取得はVERIFY_PEERとホスト名検証を有効にする。これは試験専用networkでの起動判定であり、独立CAでの信頼・誤CA拒否を検証したことにはしない。独立CA・認証・proxyなどのP2-04追加試験は[35 結合試験の内容と実行手順](35-integration-contracts-ja.md)を参照する。
 
 ## 時間上限
 
@@ -82,8 +82,8 @@ CLI停止・出力pipe回収には追加で数秒の猶予を設け、ここも�
 保存先：dev/test-results/p2-integration/<実行ID>/（Git対象外）。
 
 - result.json：全体と各projectの成否、cleanup、残存リソース、診断収集の状態、イメージID。
-- fixture.env：今回の固定image tagとtimeout。秘密情報なし。手動cleanupでも使用する。
-- compose-config.stdout.log：tester profileも含めた有効設定。
+- fixture-SCENARIO.env：今回の固定image tag、timeoutと試験設定。authでは固定の架空資格情報も含むため、CI artifactには含めない。手動cleanupでも使用する。
+- compose-config-SCENARIO.stdout.log：tester profileも含めた有効設定。
 - build-portal/toolsのstdout/stderr、Docker/Composeのバージョン。
 - run-N-probeのstdout/stderr：起動判定のJSON、失敗時の期限と最終エラー。
 - run-N-diagnostic-*：ps、固定構成のサービスログ末尾300行、対象ドメインのHTTP/HTTPS設定、公開証明書のメタデータ。
@@ -95,10 +95,10 @@ CLI停止・出力pipe回収には追加で数秒の猶予を設け、ここも�
 
 通常の試験失敗はfinallyで診断→down→残存確認を行う。既存リソースが見つかったprojectは再使用せず、削除もしない。cleanup失敗は全体失敗にする。
 
-PowerShellの強制終了・端末終了・Docker停止などではfinallyが完了しないことがある。result.jsonに保存された今回のprojectとfixture.envを確認して、該当projectだけ片付ける。次のPROJECT・RUN_IDは実際の記録に置き換える。
+PowerShellの強制終了・端末終了・Docker停止などではfinallyが完了しないことがある。result.jsonに保存された今回のprojectとfixture-SCENARIO.envを確認して、該当projectだけ片付ける。次のPROJECT・RUN_IDは実際の記録に置き換える。
 
 ```powershell
-docker compose --profile test --env-file dev/test-results/p2-integration/RUN_ID/fixture.env -p PROJECT -f spec/ci/compose.yaml down --volumes --remove-orphans --timeout 10
+docker compose --profile test --env-file dev/test-results/p2-integration/RUN_ID/fixture-SCENARIO.env -p PROJECT -f spec/ci/compose.yaml down --volumes --remove-orphans --timeout 10
 ```
 
 ビルドしたイメージとbuild cache、ホストの結果ログは残す。全体pruneや開発環境のvolume削除は行わない。
@@ -128,3 +128,7 @@ fs_overlayのLinux用ファイルはroot .gitattributesでLFを指定する。ar
 ## probeの互換性
 
 Ruby 2.7.2ではNet::HTTPのverify_hostname=を使わず、VERIFY_PEER時の標準ホスト名照合を利用する。接続・起動中の一時エラーだけ再試行し、未対応API等のプログラムエラーはprobe_error・exit 2で即時失敗にする。
+
+## P2-04による拡張
+
+現在はprepareが試験用CA・静的ファイルをproject専用volumeへ準備する。testerに共有するのは公開証明書・試験前後の比較データ用public volumeだけで、証明書秘密鍵のvolumeは共有しない。result.jsonのfixtureEnvは各scenarioの設定ファイル名を記録する。追加契約と受入状況は[35 結合試験の内容と実行手順](35-integration-contracts-ja.md)を参照。
