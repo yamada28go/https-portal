@@ -20,6 +20,18 @@ function Invoke-Docker {
     if ($code -ne 0) { throw "Docker operation failed (exit $code); see console.log" }
 }
 try {
+    # GitHub-hosted Linux runners use a different UID from the container's 1000.
+    # Grant access only to this run's output directory, never the source tree.
+    if ($PSVersionTable.Platform -eq 'Unix') {
+        & chmod '0777' '--' $results
+        if ($LASTEXITCODE -ne 0) { throw 'Cannot prepare the container output directory' }
+    }
+    if ($env:GITHUB_ACTIONS -eq 'true') {
+        $hostRecord.github = [ordered]@{
+            event=$env:GITHUB_EVENT_NAME; runId=$env:GITHUB_RUN_ID
+            runAttempt=$env:GITHUB_RUN_ATTEMPT; expectedSha=$env:GITHUB_SHA
+        }
+    }
     # Host prerequisites are Docker CLI and PowerShell only; Git runs in Docker.
     Invoke-Docker -DockerArgs @('version')
     $engineOS = & docker info --format '{{.OSType}}'

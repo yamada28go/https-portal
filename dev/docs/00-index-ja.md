@@ -23,7 +23,7 @@
 | 30番台 | 30-p2-ci/ | P2の手順・詳細設計・実施後の検証 |
 | 90番台 | 90-common-notes/ | 複数分類にまたがるメモ |
 
-P2-01は完了。最小Ruby環境で113例・3 seed・単独実行・M01〜M08・復元後検証に成功。P2-02は未着手。[32 P2検証記録](30-p2-ci/32-verification-ja.md)を参照。`33-ci-test-guide-ja.md` はCI導入時に追加する。
+P2-01は完了。最小Ruby環境で113例・3 seed・単独実行・M01〜M08・復元後検証に成功。P2-02はworkflow実装済み・GitHub受入待ち。[32 P2検証記録](30-p2-ci/32-verification-ja.md)を参照。[33 CI実行・受入手順](30-p2-ci/33-ci-test-guide-ja.md)を追加済み。
 
 P1の詳細契約・テスト計画はプロジェクト直下の[docs](../../docs/)に置いたまま。[P1対応表](../../docs/test-contract-matrix-ja.md)を参照する。
 

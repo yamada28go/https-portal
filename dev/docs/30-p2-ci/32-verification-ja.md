@@ -2,9 +2,27 @@
 
 [文書一覧](../00-index-ja.md) / [実施手順](30-execution-guide-ja.md) / [詳細計画](31-implementation-plan-ja.md)
 
-## 最新：P2-01 基準確定完了（2026-10-24）
+## 最新：P2-02 workflow実装・GitHub受入待ち（2026-10-24）
 
-**利用者実行の保存ログ・host-run.json・baseline.jsonを照合し、最小Ruby環境での再現成功を確認した。P2-01は完了。P2-02のGitHub Actions導入は未着手。**
+Tests / lint-and-unitを.github/workflows/tests.ymlへ追加。PR・push・手動起動、ubuntu-24.04、20分上限、contents: read、checkout資格情報非保存、完全SHA固定を設定した。
+
+実行はP2-01と同じdev/check_p2_baseline.ps1を使用。Linuxの結果ディレクトリだけコンテナUID1000が書き込めるようにし、GitHub event/run/attempt/expectedShaをhost-run.jsonへ記録する。試験中のnetwork none、読み取り専用ソース、一時コピーでの検証は維持する。
+
+| 確認 | 結果 |
+|---|---|
+| 開始時状態 | P2-01がコミット済み。作業ツリーに差分なしを確認 |
+| Action参照 | 公式APIでcheckout v7.0.1・upload-artifact v7.0.2の完全commitを確認 |
+| workflow | actionlint 1.7.12で成功。検証ツールは公式releaseのchecksumを照合 |
+| 共通スクリプト | PowerShell 7とWindows PowerShell 5.1の構文検査成功 |
+| 失敗伝播 | continue-on-errorなし。Dockerの非0で共通スクリプトがthrowし、ジョブを失敗にする設計。実際のGitHub上の赤判定は未確認 |
+| ログ | 成否にかかわらず限定5種類をartifact化し14日保存する設定 |
+| 未実行 | GitHubへのpush、push/PR/手動実行、Ubuntuでの実Docker検証、故意変更でのジョブ失敗・復元成功 |
+
+[CI実行・受入手順](33-ci-test-guide-ja.md)に従って利用者が実行する。P2-01のローカル成功でGitHub上の成功を代替しない。P2-02は実装済み・受入未完了。
+
+## P2-01 基準確定完了（2026-10-24）
+
+**利用者実行の保存ログ・host-run.json・baseline.jsonを照合し、最小Ruby環境での再現成功を確認した。P2-01は完了。P2-02はworkflow実装済み・GitHub受入待ち。**
 
 | 確認項目 | 結果 |
 |---|---|

@@ -1,6 +1,6 @@
 # HTTPS-PORTAL P2 実施手順
 
-用途：P2の進め方の概要。P2-01は検証成功・完了。P2-02のCI移管は未着手。
+用途：P2の進め方の概要。P2-01は検証成功・完了。P2-02はworkflow実装済み・GitHub受入待ち。
 [文書一覧](../00-index-ja.md) / [詳細計画](31-implementation-plan-ja.md)
 
 ## 目的
@@ -66,4 +66,4 @@
 
 ## 実施状況
 
-この文書は実施順序の説明。**P2-01は最小環境での全検証に成功し完了。P2-02のCI移管は未着手。CI・GitHub設定は未変更。** [最新の検証記録](32-verification-ja.md)を参照。
+この文書は実施順序の説明。**P2-01は最小環境での全検証に成功し完了。P2-02はworkflow実装済み・GitHub受入待ち。workflowは追加済み。GitHubへのpush・実行・保護設定は未実施。** [最新の検証記録](32-verification-ja.md)を参照。

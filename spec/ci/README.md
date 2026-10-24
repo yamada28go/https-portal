@@ -39,3 +39,7 @@ host-run.jsonはDocker起動側、baseline.jsonはコンテナ内検証の記録
 コンテナは終了時に削除する。ローカルのビルドイメージ・cacheと結果ログは残る。個人名・アカウント名・絶対パスを公開メモへ転記しない。
 
 [検証記録](../../dev/docs/30-p2-ci/32-verification-ja.md)
+
+## GitHub Actions
+
+Tests / lint-and-unitも同じスクリプトを使用する。[CI実行・受入手順](../../dev/docs/30-p2-ci/33-ci-test-guide-ja.md)を参照。Linuxでは実行専用の結果ディレクトリだけ書き込みを許可する。GitHubでの成功は実行後に確認する。
