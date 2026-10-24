@@ -1,6 +1,6 @@
 # HTTPS-PORTAL P2実施計画：GitHub Actionsへの移管
 
-用途：P2の分析・設計・試験仕様・完了条件。P2は未実施。  
+用途：P2の分析・設計・試験仕様・完了条件。P2-01は検証成功・完了。P2-02のCI移管は未着手。
 [文書一覧](../00-index-ja.md) / [実施手順](30-execution-guide-ja.md)
 
 - 作成日：2026-10-24（日本時間）
@@ -8,7 +8,7 @@
 - 基準：[バージョン更新ロードマップ](../10-roadmap/10-upgrade-roadmap-ja.md) のP2
 - 調査時HEAD：公開版では省略。実装開始時に作業環境で確認・記録する。
 - 調査時ブランチ：P1のテスト追加用ブランチ（個人識別子を含む名称は省略）
-- 状態：コード・設定・保存実行ログを分析した実施計画。P2のコード実装、GitHubへのpush、設定変更は未実施。
+- 状態：P2-01の最小環境で実ビルド・全検証に成功。P2-01完了、P2-02未着手。GitHubへのpush・設定変更は未実施。[検証記録](32-verification-ja.md)を参照。
 
 ## 1. 結論と対象範囲
 
@@ -57,7 +57,7 @@ P2の成果は、PRで `lint-and-unit` と `docker-smoke` が自動起動し、�
 
 ### 3.1 UT用の最小runner
 
-`spec/ci/Dockerfile.unit` に、開発環境と同じRuby 2.7.2ベース・digestとBundler 2.2.4を使うCI用イメージを追加する。既存Gemfile.lockを維持し、Node/Codexやログインを必要としない構成にする。
+`spec/ci/Dockerfile.unit` に、開発環境と同じRuby 2.7.2ベース・digestとBundler 2.2.4を使うCI用イメージを追加する。既存Gemfile.lockを維持し、Node/Codexやログインを必要としない構成にする。P2-01ではGit調査もオフラインコンテナ内で行うため、最小イメージにGitを含める。ホストはDocker操作のみとし、ソースは読み取り専用で渡して一時コピー上で検証する。
 
 依存取得は準備工程の `bundle _2.2.4_ install --frozen` に限定し、試験時はnetwork noneで動かす。古いRuby/Busterの取得・TLS・Bundler互換性は最初に実証する。失敗をTLS検証無効化やbundle updateで回避しない。依存更新が不可避なら別変更として扱う。
 

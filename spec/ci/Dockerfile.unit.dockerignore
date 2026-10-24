@@ -1,0 +1,8 @@
+**
+!Gemfile
+!Gemfile.lock
+!.ruby-version
+!.rspec
+!spec/
+!spec/ci/
+!spec/ci/check_baseline.rb

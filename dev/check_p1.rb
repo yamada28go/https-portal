@@ -3,16 +3,21 @@ require 'fileutils'
 require 'open3'
 require 'rbconfig'
 require 'tmpdir'
+require 'bundler'
 
 root = File.expand_path('..', __dir__)
 paths = %w[spec/models/domain_spec.rb spec/models/domain_input_spec.rb spec/contracts]
-log_dir = File.join(__dir__, 'test-results')
+log_dir = ENV.fetch('P1_LOG_DIR', File.join(__dir__, 'test-results'))
 FileUtils.mkdir_p(log_dir)
 log = File.open(File.join(log_dir, 'p1-check.log'), 'w')
 
 begin
   log.puts "P1 verification started: #{Time.now.utc.strftime('%Y-%m-%dT%H:%M:%SZ')}"
   log.puts RUBY_DESCRIPTION
+  log.puts "Bundler: #{Bundler::VERSION}"
+  log.puts "RSpec: #{Bundler.load.specs.find { |spec| spec.name == 'rspec-core' }.version}"
+  log.puts "Baseline commit: #{ENV.fetch('P1_BASELINE_SHA', 'not supplied')}"
+  log.puts "Input fingerprint: #{ENV.fetch('P1_INPUT_FINGERPRINT', 'not supplied')}"
   run = lambda do |directory, label, arguments, expected_count, expected_failure|
     command = [RbConfig.ruby, '-S', 'bundle', 'exec', 'rspec', *arguments, '--no-color', '--format', 'progress']
     out, err, status = Open3.capture3({
@@ -29,12 +34,13 @@ begin
     puts "#{label}: PASS (#{summary[0]}; exit #{status.exitstatus})"
   end
 
-  ruby_files = ['spec/p1_helper.rb', *Dir[File.join(root, 'spec/{models,contracts,support}/**/*.rb')]]
+  ruby_files = [__FILE__, *Dir[File.join(root, 'spec/**/*.rb')], *Dir[File.join(root, 'fs_overlay/**/*.rb')]].uniq
   ruby_files.each do |file|
     out, err, status = Open3.capture3(RbConfig.ruby, '-c', file, chdir: root)
     raise "Ruby syntax failed: #{file}\n#{out}#{err}" unless status.success?
   end
-  puts 'Ruby syntax: PASS'
+  log.puts "Ruby syntax: PASS (#{ruby_files.length} files)"
+  puts "Ruby syntax: PASS (#{ruby_files.length} files)"
   [1, 17, 101].each do |seed|
     run.call(root, "All 113 cases, seed #{seed}", [*paths, '--seed', seed.to_s], 113, 0)
   end

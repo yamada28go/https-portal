@@ -1,0 +1,26 @@
+# Fixed Ruby/Gem baseline. Git is used only inside the offline test container.
+FROM ruby:2.7.2-buster@sha256:1dd0106849233fcd913b7c4608078fa1a53a5e3ce1af2a55e4d726b0d8868e2f
+# Buster packages are archived; keep signature and TLS verification enabled.
+RUN printf '%s\n' \
+      'deb http://archive.debian.org/debian buster main' \
+      'deb http://archive.debian.org/debian-security buster/updates main' \
+      > /etc/apt/sources.list \
+    && apt-get -o Acquire::Check-Valid-Until=false update \
+    && apt-get install -y --no-install-recommends git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+ENV BUNDLE_PATH=/usr/local/bundle \
+    BUNDLE_APP_CONFIG=/tmp/bundle-config \
+    BUNDLE_IGNORE_CONFIG=1 \
+    BUNDLE_FROZEN=true \
+    SKIP_BUILD=1 \
+    LANG=C.UTF-8 \
+    HOME=/tmp
+WORKDIR /opt/p1-source
+COPY Gemfile Gemfile.lock .ruby-version .rspec ./
+RUN gem install bundler --version 2.2.4 --no-document \
+    && bundle _2.2.4_ install --frozen \
+    && bundle _2.2.4_ check \
+    && ruby --version && bundle _2.2.4_ --version && git --version
+COPY spec/ci/check_baseline.rb /opt/ci/check_baseline.rb
+USER 1000:1000
+ENTRYPOINT ["ruby", "/opt/ci/check_baseline.rb"]

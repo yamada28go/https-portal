@@ -18,3 +18,5 @@ Dockerfile、Compose、操作スクリプト、開発環境ドキュメントを
 Composeは親ディレクトリのプロジェクト全体を/workspaceに共有します。Ruby依存のGemfileとGemfile.lock、P1テスト計画はプロジェクト本来の場所に置きます。
 
 P1の113例：`.\dev\dev.ps1 Test`。順序変更・単独実行・Mutation検証：`.\dev\dev.ps1 P1`。
+
+P2-01の最小Ruby環境：`.\dev\check_p2_baseline.ps1`。[実行と検証条件](../spec/ci/README.md)を参照。
