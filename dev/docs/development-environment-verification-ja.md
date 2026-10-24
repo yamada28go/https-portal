@@ -73,3 +73,9 @@ Windows PowerShell 5.1とPowerShell 7.6で、ネイティブコマンドの代�
 ## パイプラインのログ保存先修正
 
 Push-Location/Pop-Locationを除去し、絶対パスのCompose設定を使って呼び出し元の作業フォルダを維持するよう修正。PowerShell 5.1/7で、スクリプト全体のP1アクションを模擬Dockerと実行し、相対パスのTee-Objectが正しい場所へ保存することと、作業フォルダ保持を確認した。手順ではログの絶対パスも実行前に確定する。実DockerによるUTはこの検証に含まない。
+
+## C-07/C-08の現行動作固定
+
+利用者の指示で現行動作を正解とし、ACME署名12例とNginx書き込み・reload18例を追加。既定対象は113例、MutationはM01〜M08へ拡張した。PrismによるRuby構文、30例のID・件数、単独実行件数の合計113、Mutationの一意な変更箇所、Compose構文、git diff --checkを確認した。製品コード・依存バージョン・既存83例は変更していない。
+
+今回の113例と追加Mutationは、Docker Engineへの接続拒否によりこのチャットからは未実行。以前の83例とM01〜M05の成功ログとは区別する。詳細な期待値はプロジェクトdocs/c07-c08-current-contract-ja.mdを参照。

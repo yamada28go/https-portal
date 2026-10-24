@@ -36,7 +36,7 @@ begin
   end
   puts 'Ruby syntax: PASS'
   [1, 17, 101].each do |seed|
-    run.call(root, "All 83 cases, seed #{seed}", [*paths, '--seed', seed.to_s], 83, 0)
+    run.call(root, "All 113 cases, seed #{seed}", [*paths, '--seed', seed.to_s], 113, 0)
   end
   {
     'spec/models/domain_spec.rb' => 26,
@@ -45,7 +45,9 @@ begin
     'spec/contracts/nginx_tls_spec.rb' => 4,
     'spec/contracts/nginx_access_spec.rb' => 5,
     'spec/contracts/nginx_routing_spec.rb' => 7,
-    'spec/contracts/certificate_renewal_spec.rb' => 8
+    'spec/contracts/certificate_renewal_spec.rb' => 8,
+    'spec/contracts/acme_signing_spec.rb' => 12,
+    'spec/contracts/nginx_failure_spec.rb' => 18
   }.each do |path, count|
     run.call(root, "Standalone #{path}", [path], count, 0)
   end
@@ -55,7 +57,10 @@ begin
     ['M02', 'fs_overlay/var/lib/nginx-conf/default.ssl.conf.erb', 'proxy_set_header X-Forwarded-Proto $scheme;', '', 'spec/contracts/nginx_routing_spec.rb', 'R02:'],
     ['M03', 'fs_overlay/var/lib/nginx-conf/default.ssl.conf.erb', 'auth_basic_user_file <%= domain.htaccess_path %>;', '', 'spec/contracts/nginx_access_spec.rb', 'A01:'],
     ['M04', 'fs_overlay/opt/certs_manager/lib/open_ssl.rb', 'expires_in_days(domain.signed_cert_path) > NAConfig.renew_margin_days', 'expires_in_days(domain.signed_cert_path) >= NAConfig.renew_margin_days', 'spec/contracts/certificate_renewal_spec.rb', 'C05:'],
-    ['M05', 'fs_overlay/var/lib/nginx-conf/default.ssl.conf.erb', "ENV['REDIRECT_CODE'] || 307", "ENV['REDIRECT_CODE'] || 302", 'spec/contracts/nginx_routing_spec.rb', 'R04:']
+    ['M05', 'fs_overlay/var/lib/nginx-conf/default.ssl.conf.erb', "ENV['REDIRECT_CODE'] || 307", "ENV['REDIRECT_CODE'] || 302", 'spec/contracts/nginx_routing_spec.rb', 'R04:'],
+    ['M06', 'fs_overlay/opt/certs_manager/lib/acme.rb', 'Timeout.timeout(120)', 'Timeout.timeout(121)', 'spec/contracts/acme_signing_spec.rb', 'C-07-01:'],
+    ['M07', 'fs_overlay/opt/certs_manager/lib/nginx.rb', 'if (!success && kill_on_failure)', 'if !success', 'spec/contracts/nginx_failure_spec.rb', 'C-08-01:'],
+    ['M08', 'fs_overlay/opt/certs_manager/lib/acme.rb', 'FileUtils.mv(domain.ongoing_cert_path, domain.signed_cert_path, force: true)', 'FileUtils.mv(domain.ongoing_cert_path, domain.signed_cert_path, force: false)', 'spec/contracts/acme_signing_spec.rb', 'C-07-05:']
   ]
 
   # Mutate an isolated checkout copy, never the actual product files.
@@ -79,7 +84,7 @@ begin
       raise "#{id}: restoration failed" unless File.binread(path) == original
       run.call(scratch, "#{id} restored", args, 1, 0)
     end
-    run.call(scratch, 'All cases after restoration', paths, 83, 0)
+    run.call(scratch, 'All cases after restoration', paths, 113, 0)
   end
   log.puts "\nAll P1 automated checks passed. Human review remains separate."
   puts 'P1 checks passed. Evidence: dev/test-results/p1-check.log'
