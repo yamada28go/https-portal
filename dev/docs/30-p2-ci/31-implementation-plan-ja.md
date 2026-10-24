@@ -243,4 +243,8 @@ dev/docs/
 
 ## P2-04の実装状況
 
-I01〜I08の試験を実装し、全scenarioの設定と構文を静的確認済み。実Dockerの受入は利用者による実行待ち。[35 結合試験の内容と実行手順](35-integration-contracts-ja.md)を参照。実行時の隔離方針は維持し、build時の依存物取得だけ外部通信を必要とする。
+I01〜I08の試験を実装し、全scenarioの設定と構文を静的確認済み。実Dockerで全8件成功・診断/cleanup/残存なしを確認し、P2-04は受入完了。[35 結合試験の内容と実行手順](35-integration-contracts-ja.md)を参照。実行時の隔離方針は維持し、build時の依存物取得だけ外部通信を必要とする。
+
+## P2-05の実装状況
+
+Testsに独立docker-smokeを追加し、共通scriptで全8件を実行する。ログと結果JSONは14日保持。上限はbuildと診断用時間を含めジョブ45分・試験step40分へ調整した。GitHub実行・5回連続成功・必須チェック設定は未確認。[36 Actions接続・受入手順](36-actions-integration-guide-ja.md)を参照。

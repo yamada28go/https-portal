@@ -43,3 +43,32 @@ jobs:
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
+
+  docker-smoke:
+    name: docker-smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run isolated Docker integration tests
+        shell: pwsh
+        timeout-minutes: 40
+        run: ./dev/check_p2_integration.ps1 -Scenario all
+
+      - name: Upload integration test evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        timeout-minutes: 3
+        with:
+          name: integration-test-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            dev/test-results/p2-integration/*/result.json
+            dev/test-results/p2-integration/*/*.stdout.log
+            dev/test-results/p2-integration/*/*.stderr.log
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14

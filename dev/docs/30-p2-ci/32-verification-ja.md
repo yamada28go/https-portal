@@ -2,6 +2,24 @@
 
 [文書一覧](../00-index-ja.md) / [実施手順](30-execution-guide-ja.md) / [詳細計画](31-implementation-plan-ja.md)
 
+## 最新：P2-04受入完了・P2-05 Actions接続実装（2026-10-24）
+
+| 項目 | 確認結果 |
+|---|---|
+| ローカル受入ID | 20261024t105928z-3865e7dc |
+| 時刻 | 2026-10-24 19:59:28〜20:04:08 JST |
+| 全体 | result=passed、stage=complete、allの8件成功 |
+| CA | I-05成功、keyMatches=true。誤CA・誤名の負の対照を含む |
+| 更新 | skipログ成功、before/afterの証明書fingerprint一致、I-07成功 |
+| 後片付け | 全8件diagnostics/cleanup=passed、container/network/volumeの残存なし |
+| P2-04 | 実Docker受入完了 |
+| P2-05実装 | Testsに独立docker-smokeを追加。同じscriptの-Scenario allを使用。マスク済みログとresult.jsonをalways条件で14日保持 |
+| 静的確認 | actionlint、PowerShell 7/5.1構文、既存成功ログの成果物対象とマスクを確認 |
+| GitHub受入 | 未実行。commit/push後にpush・PR・手動実行、artifactとcleanupを確認する |
+| 残課題 | 故意の失敗検知・5回連続成功・必須チェック設定とマージ阻止。P2全体は未完了 |
+
+[36 Actions接続・受入手順](36-actions-integration-guide-ja.md)を参照。以下の失敗記録は修正前の履歴で、最新受入結果を上書きしない。
+
 ## P2-04 all再実行と更新呼び出しPATHの修正（2026-10-24）
 
 - 実行ID：20261024t095715z-47007c79。local/redirect/proxy/auth/ca/persistenceの先頭6件がresult/diagnostics/cleanup=passed。caはkeyMatches=trueで、chained.crt配置の修正も実確認できた。

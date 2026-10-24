@@ -41,6 +41,10 @@ P1の詳細契約・テスト計画はプロジェクト直下の[docs](../../do
 
 P2-03のDocker試験基盤は受入完了。独立2回成功と、期限切れ失敗時の診断・cleanup・残存なしを確認済み。[34 Docker試験の実行・受入手順](30-p2-ci/34-integration-guide-ja.md)を参照。P2-04の実装と受入状況は次節を参照。P2-02のpush成功は確認済みだが、残りの受入項目も[32 検証記録](30-p2-ci/32-verification-ja.md)で追跡する。
 
-## 現在の作業：P2-04
+## 完了済み：P2-04
 
-重要な結合試験を実装済み・利用者の実行受入待ち。[35 結合試験の内容と実行手順](30-p2-ci/35-integration-contracts-ja.md)を参照。試験中の外部通信遮断は維持し、P2-05のActions接続はまだ行わない。
+重要な結合試験は全8件の実Docker受入完了。[35 結合試験の内容と実行手順](30-p2-ci/35-integration-contracts-ja.md)を参照。試験中の外部通信遮断は維持する。
+
+## 現在の作業：P2-05
+
+Testsにdocker-smokeを追加済み・GitHub受入待ち。[36 Actions接続・受入手順](30-p2-ci/36-actions-integration-guide-ja.md)を参照。commit/push後に両ジョブと成果物を確認する。必須チェック設定と5回連続成功は未確認。

@@ -24,6 +24,12 @@ $environment = @{
 }
 
 $record = [ordered]@{ startedUtc=(Get-Date).ToUniversalTime().ToString('o'); scenario=$Scenario; repeat=$Repeat; result='running'; stage='configuration'; runs=@() }
+if ($env:GITHUB_ACTIONS -eq 'true') {
+    $record.github = [ordered]@{
+        event=$env:GITHUB_EVENT_NAME; runId=$env:GITHUB_RUN_ID
+        runAttempt=$env:GITHUB_RUN_ATTEMPT; expectedSha=$env:GITHUB_SHA
+    }
+}
 $failure = $null
 $scenarios = if ($Scenario -eq 'all') { @('local','redirect','proxy','auth','ca','persistence','renewal','static') } else { @($Scenario) }
 

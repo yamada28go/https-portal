@@ -75,3 +75,7 @@ artifactの対象は上記5種類のみ。Git管理情報・ソース全体・�
 - [ ] 復元後に成功することを確認し、runを記録
 
 マージ必須チェック設定と5回連続成功はP2-05。P2-02ではdocker-smoke・脆弱性検査・依存更新を追加しない。
+
+## Docker結合試験の追加
+
+Testsはlint-and-unitに加え、独立docker-smokeも実行する構成へ拡張済み。Docker側の成果物・通信範囲・受入手順は[36 Actions接続・受入手順](36-actions-integration-guide-ja.md)を参照。

@@ -103,12 +103,12 @@ docker compose --profile test --env-file dev/test-results/p2-integration/RUN_ID/
 - [x] 一時CA・中間証明書・公開データだけのtester共有を実装
 - [x] 契約assertとreadinessを分離し、全scenarioの設定・Ruby静的構文・PowerShell構文を検査
 - [x] ログマスク・testerへの秘密鍵volume拒否と既存のプロセス制御を補助検証
-- [ ] allの8 scenarioが実Dockerで成功
-- [ ] 証明書と鍵の公開部分一致、誤CA・誤ホスト名拒否を実確認
-- [ ] 再作成後の同一証明書・renew skipと不変性を実確認
-- [ ] 全projectの診断・cleanup・リソース残存なしを確認
+- [x] allの8 scenarioが実Dockerで成功
+- [x] 証明書と鍵の公開部分一致、誤CA・誤ホスト名拒否を実確認
+- [x] 再作成後の同一証明書・renew skipと不変性を実確認
+- [x] 全projectの診断・cleanup・リソース残存なしを確認
 
-GitHub Actionsにはまだ接続しない。P2-04の実行受入後にP2-05でdocker-smokeを追加する。
+全8件の実Docker受入を完了し、P2-05でdocker-smokeを追加済み。GitHub上の受入は[36 Actions接続・受入手順](36-actions-integration-guide-ja.md)で確認する。
 
 ## 起動時間の安定化
 
