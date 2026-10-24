@@ -17,7 +17,7 @@ module IntegrationClient
   class Client
     attr_reader :host, :cert, :client_ip
     def initialize(host, root: nil)
-      raise 'Unexpected host' unless %w[portal.test proxy.test auth.test tls.test static.test].include?(host)
+      raise 'Unexpected host' unless %w[portal.test proxy.test auth.test tls.test static.test ip.test ip-auth.test].include?(host)
       @host = host
       @root = root
     end
@@ -68,7 +68,7 @@ module IntegrationClient
       end
     end
 
-    def request(path = '/', secure: true, credentials: nil)
+    def request(path = '/', secure: true, credentials: nil, headers: {})
       Timeout.timeout(10) do
         http = Net::HTTP.new(@host, secure ? 443 : 80, nil)
         if secure
@@ -80,6 +80,7 @@ module IntegrationClient
         http.open_timeout = 5
         http.read_timeout = 5
         req = Net::HTTP::Get.new(path)
+        headers.each { |name, value| req[name] = value }
         req.basic_auth(*credentials) if credentials
         http.request(req)
       end

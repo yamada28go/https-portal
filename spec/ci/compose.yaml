@@ -18,7 +18,7 @@ services:
       - site:/var/www/vhosts
     networks:
       isolated:
-        aliases: [portal.test, proxy.test, auth.test, tls.test, static.test]
+        aliases: [portal.test, proxy.test, auth.test, tls.test, static.test, ip.test, ip-auth.test]
   echo:
     image: ${IT_TEST_IMAGE:?Set IT_TEST_IMAGE}
     pull_policy: never
@@ -58,6 +58,22 @@ services:
     tmpfs: [/tmp]
     environment:
       IT_TARGET_HOST: portal.test
+      IT_SCENARIO: ${IT_SCENARIO:-local}
+      IT_STARTUP_TIMEOUT_SECONDS: ${IT_STARTUP_TIMEOUT_SECONDS:-180}
+    volumes:
+      - public:/public
+    networks: [isolated]
+  tester-allowed:
+    image: ${IT_TEST_IMAGE:?Set IT_TEST_IMAGE}
+    pull_policy: never
+    profiles: [test]
+    command: [ruby, -e, "sleep 86400"]
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    environment:
       IT_SCENARIO: ${IT_SCENARIO:-local}
       IT_STARTUP_TIMEOUT_SECONDS: ${IT_STARTUP_TIMEOUT_SECONDS:-180}
     volumes:

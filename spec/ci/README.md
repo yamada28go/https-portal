@@ -49,3 +49,11 @@ Tests / lint-and-unitも同じスクリプトを使用する。[CI実行・受�
 プロジェクトルートで `.\dev\check_p2_integration.ps1 -Repeat 2`。[実行・受入手順](../../dev/docs/30-p2-ci/34-integration-guide-ja.md)を参照。実Dockerの起動確認は利用者側で行う。
 
 P2-04の重要契約を一括実行：`.\dev\check_p2_integration.ps1 -Scenario all`。[試験内容・受入手順](../../dev/docs/30-p2-ci/35-integration-contracts-ja.md)を参照。実Dockerの実行受入は利用者側で行う。
+
+## 準備済みイメージによる実行（P3 手順2）
+
+build・pullを行わない入口を追加した。UTは `-UsePreparedImages -UnitImage <ローカル参照>`、結合試験は `-UsePreparedImages -PortalImage <ローカル参照> -TestImage <ローカル参照>` を指定する。指定なしは従来どおりbuildを含む。
+
+[実行手順・資材準備・制約](../../dev/docs/40-p3-security/41-execution-guide-ja.md)を参照。通信遮断下での実試験受入は別途必要。
+
+P3手順4：IP制限は -Scenario security（ip/ip-auth）で実行する。allは既存8件＋IP制限2件の計10件。[準備・実行手順](../../dev/docs/40-p3-security/43-ip-access-guide-ja.md)に従いtoolsイメージを更新する。

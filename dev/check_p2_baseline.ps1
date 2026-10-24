@@ -1,5 +1,13 @@
 [CmdletBinding()]
-param([switch]$NoCache)
+param(
+    [switch]$NoCache,
+    [switch]$UsePreparedImages,
+    [string]$UnitImage
+)
+if ($UsePreparedImages) {
+    if ([string]::IsNullOrWhiteSpace($UnitImage) -or $UnitImage.StartsWith('-') -or $UnitImage -match '[\s\x00-\x1f$#]') { throw 'UsePreparedImages requires -UnitImage with a local image reference' }
+    if ($NoCache) { throw 'NoCache cannot be used with UsePreparedImages' }
+} elseif ($PSBoundParameters.ContainsKey('UnitImage')) { throw 'UnitImage requires UsePreparedImages' }
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot
 $runId = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ') + '-' + [Guid]::NewGuid().ToString('N').Substring(0,8)
@@ -7,6 +15,8 @@ $results = Join-Path $PSScriptRoot ('test-results/p2-baseline/' + $runId)
 New-Item -ItemType Directory -Path $results -Force | Out-Null
 $console = Join-Path $results 'console.log'
 $hostRecord = [ordered]@{ startedUtc=(Get-Date).ToUniversalTime().ToString('o'); result='running'; stage='engine'; imageTag=('https-portal-p2-unit:' + $runId) }
+$hostRecord.mode = if ($UsePreparedImages) { 'prepared-images' } else { 'build-and-test' }
+if ($UsePreparedImages) { $hostRecord.imageTag = $UnitImage }
 function Invoke-Docker {
     param([string[]]$DockerArgs)
     $ErrorActionPreference = 'Continue'
@@ -36,14 +46,21 @@ try {
     Invoke-Docker -DockerArgs @('version')
     $engineOS = & docker info --format '{{.OSType}}'
     if ($LASTEXITCODE -ne 0 -or $engineOS -ne 'linux') { throw 'A reachable Linux Docker Engine is required' }
-    $hostRecord.stage = 'build'
-    $buildArgs = @('build','--progress=plain','-f',(Join-Path $repo 'spec/ci/Dockerfile.unit'),'-t',$hostRecord.imageTag)
-    if ($NoCache) { $buildArgs += '--no-cache' }
-    Invoke-Docker -DockerArgs ($buildArgs + @($repo))
-    $hostRecord.imageId = (& docker image inspect --format '{{.Id}}' $hostRecord.imageTag)
-    if ($LASTEXITCODE -ne 0) { throw 'Cannot record built image ID' }
+    if (!$UsePreparedImages) {
+        $hostRecord.stage = 'build'
+        $buildArgs = @('build','--progress=plain','-f',(Join-Path $repo 'spec/ci/Dockerfile.unit'),'-t',$hostRecord.imageTag)
+        if ($NoCache) { $buildArgs += '--no-cache' }
+        Invoke-Docker -DockerArgs ($buildArgs + @($repo))
+    }
+    $hostRecord.stage = 'image-preflight'
+    $imageJson = & docker image inspect --format '{"Id":{{json .Id}},"Os":{{json .Os}},"Architecture":{{json .Architecture}}}' $hostRecord.imageTag
+    if ($LASTEXITCODE -ne 0) { throw 'Local unit image is unavailable; prepare or load it before testing. No image will be pulled.' }
+    $imageInfo = ($imageJson | Out-String) | ConvertFrom-Json
+    if ($imageInfo.Id -notmatch '^sha256:[0-9a-f]{64}$' -or $imageInfo.Os -ne 'linux') { throw 'Expected a local Linux image with a valid image ID' }
+    $hostRecord.imageId = $imageInfo.Id
+    $hostRecord.imagePlatform = $imageInfo.Os + '/' + $imageInfo.Architecture
     $hostRecord.stage = 'offline-test'
-    Invoke-Docker -DockerArgs @('run','--rm','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges:true','--tmpfs','/tmp:rw,nosuid,nodev,size=256m','--mount',('type=bind,source=' + $repo + ',target=/checkout,readonly'),'--mount',('type=bind,source=' + $results + ',target=/results'),$hostRecord.imageTag)
+    Invoke-Docker -DockerArgs @('run','--pull','never','--rm','--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges:true','--tmpfs','/tmp:rw,nosuid,nodev,size=256m','--mount',('type=bind,source=' + $repo + ',target=/checkout,readonly'),'--mount',('type=bind,source=' + $results + ',target=/results'),$hostRecord.imageId)
     $baseline = Get-Content -Raw -LiteralPath (Join-Path $results 'baseline.json') | ConvertFrom-Json
     if ($baseline.result -ne 'passed') { throw 'Container baseline did not pass' }
     $hostRecord.result = 'passed'

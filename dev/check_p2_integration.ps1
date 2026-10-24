@@ -1,11 +1,20 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('local','never-ready','redirect','proxy','auth','ca','persistence','renewal','static','all')][string]$Scenario = 'local',
+    [ValidateSet('local','never-ready','redirect','proxy','auth','ca','persistence','renewal','static','ip','ip-auth','security','all')][string]$Scenario = 'local',
     [ValidateRange(1,10)][int]$Repeat = 1,
     [ValidateRange(1,900)][int]$StartupTimeoutSeconds = 180,
     [switch]$NoCache,
-    [switch]$ValidateOnly
+    [switch]$ValidateOnly,
+    [switch]$UsePreparedImages,
+    [string]$PortalImage,
+    [string]$TestImage
 )
+if ($UsePreparedImages) {
+    foreach ($reference in @($PortalImage, $TestImage)) {
+        if ([string]::IsNullOrWhiteSpace($reference) -or $reference.StartsWith('-') -or $reference -match '[\s\x00-\x1f$#]') { throw 'UsePreparedImages requires both -PortalImage and -TestImage with local image references' }
+    }
+    if ($NoCache) { throw 'NoCache cannot be used with UsePreparedImages' }
+} elseif ($PSBoundParameters.ContainsKey('PortalImage') -or $PSBoundParameters.ContainsKey('TestImage')) { throw 'Image references require UsePreparedImages' }
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot
 $runId = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ').ToLowerInvariant() + '-' + [Guid]::NewGuid().ToString('N').Substring(0,8)
@@ -21,6 +30,7 @@ $environment = @{
     IT_STARTUP_TIMEOUT_SECONDS=$StartupTimeoutSeconds.ToString()
     IT_SCENARIO='local'
     IT_DOMAINS='portal.test'
+    IT_ALLOWED_IP='192.0.2.10'
 }
 
 $record = [ordered]@{ startedUtc=(Get-Date).ToUniversalTime().ToString('o'); scenario=$Scenario; repeat=$Repeat; result='running'; stage='configuration'; runs=@() }
@@ -30,8 +40,14 @@ if ($env:GITHUB_ACTIONS -eq 'true') {
         runAttempt=$env:GITHUB_RUN_ATTEMPT; expectedSha=$env:GITHUB_SHA
     }
 }
+$record.mode = if ($UsePreparedImages) { 'prepared-images' } else { 'build-and-test' }
+if ($UsePreparedImages) {
+    $environment.IT_PORTAL_IMAGE = $PortalImage
+    $environment.IT_TEST_IMAGE = $TestImage
+}
+$record.requestedImages = [ordered]@{ portal=$environment.IT_PORTAL_IMAGE; tools=$environment.IT_TEST_IMAGE }
 $failure = $null
-$scenarios = if ($Scenario -eq 'all') { @('local','redirect','proxy','auth','ca','persistence','renewal','static') } else { @($Scenario) }
+$scenarios = if ($Scenario -eq 'all') { @('local','redirect','proxy','auth','ca','persistence','renewal','static','ip','ip-auth') } elseif ($Scenario -eq 'security') { @('ip','ip-auth') } else { @($Scenario) }
 
 function Protect-LogText([string]$Text) {
     foreach ($secret in @('fixture-user:fixture-password','fixture-user:wrong-password')) {
@@ -45,11 +61,13 @@ function Set-ScenarioEnvironment([string]$Name) {
     $environment.IT_DOMAINS = switch ($Name) {
         'proxy' { 'proxy.test -> http://echo:8080' }
         'auth' { 'fixture-user:fixture-password@auth.test -> http://echo:8080' }
+        'ip' { '[' + $environment.IT_ALLOWED_IP + ']ip.test -> http://echo:8080' }
+        'ip-auth' { '[' + $environment.IT_ALLOWED_IP + ']fixture-user:fixture-password@ip-auth.test -> http://echo:8080' }
         'ca' { 'tls.test' }
         'static' { 'static.test' }
         default { 'portal.test' }
     }
-    $script:activeHost = switch ($Name) { 'proxy' { 'proxy.test' } 'auth' { 'auth.test' } 'ca' { 'tls.test' } 'static' { 'static.test' } default { 'portal.test' } }
+    $script:activeHost = switch ($Name) { 'proxy' { 'proxy.test' } 'auth' { 'auth.test' } 'ip' { 'ip.test' } 'ip-auth' { 'ip-auth.test' } 'ca' { 'tls.test' } 'static' { 'static.test' } default { 'portal.test' } }
     $script:envFile = Join-Path $results ('fixture-' + $Name + '.env')
     [IO.File]::WriteAllText($envFile, (($environment.Keys | Sort-Object | ForEach-Object { $_ + '=' + $environment[$_] }) -join "`n") + "`n", $utf8)
 }
@@ -125,9 +143,11 @@ function Assert-IsolatedConfig($Config) {
         foreach ($volume in $service.volumes) { if ($volume.type -ne 'volume') { throw 'Fixture may use only project-local named volumes' } }
         if ($service.environment.DEBUG) { throw 'DEBUG must not be set' }
     }
-    $domains = @('portal.test','proxy.test -> http://echo:8080','fixture-user:fixture-password@auth.test -> http://echo:8080','tls.test','static.test')
+    $domains = @('portal.test','proxy.test -> http://echo:8080','fixture-user:fixture-password@auth.test -> http://echo:8080','tls.test','static.test',('[' + $environment.IT_ALLOWED_IP + ']ip.test -> http://echo:8080'),('[' + $environment.IT_ALLOWED_IP + ']fixture-user:fixture-password@ip-auth.test -> http://echo:8080'))
     if ($Config.services.portal.environment.STAGE -ne 'local' -or $Config.services.portal.environment.DOMAINS -notin $domains) { throw 'Only fixed internal local-stage domains are allowed' }
-    foreach ($volume in $Config.services.tester.volumes) { if ($volume.source -ne 'public') { throw 'Tester must not receive private certificate or site volumes' } }
+    foreach ($tester in @('tester','tester-allowed')) {
+        foreach ($volume in $Config.services.$tester.volumes) { if ($volume.source -ne 'public') { throw 'Tester must not receive private certificate or site volumes' } }
+    }
 }
 function Find-Resources([string]$Project,[string]$Prefix) {
     $found = [ordered]@{}
@@ -158,13 +178,22 @@ try {
         Invoke-DockerBounded -DockerArgs @('version') -LogName 'docker-version' | Out-Null
         $os = Invoke-DockerBounded -DockerArgs @('info','--format','{{.OSType}}') -LogName 'engine-os'
         if ($os.stdout.Trim() -ne 'linux') { throw 'A Linux Docker Engine is required' }
-        $record.stage = 'build'
-        $extra = if ($NoCache) { @('--no-cache') } else { @() }
-        Invoke-DockerBounded -DockerArgs (@('build','--progress=plain','-t',$environment.IT_PORTAL_IMAGE) + $extra + @($repo)) -TimeoutSeconds 1200 -LogName 'build-portal' | Out-Null
-        Invoke-DockerBounded -DockerArgs (@('build','--progress=plain','-f',(Join-Path $repo 'spec/ci/Dockerfile.integration'),'-t',$environment.IT_TEST_IMAGE) + $extra + @($repo)) -TimeoutSeconds 600 -LogName 'build-tools' | Out-Null
+        if (!$UsePreparedImages) {
+            $record.stage = 'build'
+            $extra = if ($NoCache) { @('--no-cache') } else { @() }
+            Invoke-DockerBounded -DockerArgs (@('build','--progress=plain','-t',$environment.IT_PORTAL_IMAGE) + $extra + @($repo)) -TimeoutSeconds 1200 -LogName 'build-portal' | Out-Null
+            Invoke-DockerBounded -DockerArgs (@('build','--progress=plain','-f',(Join-Path $repo 'spec/ci/Dockerfile.integration'),'-t',$environment.IT_TEST_IMAGE) + $extra + @($repo)) -TimeoutSeconds 600 -LogName 'build-tools' | Out-Null
+        }
+        $record.stage = 'image-preflight'
+        $record.imagePlatforms = [ordered]@{}
         foreach ($image in @('IT_PORTAL_IMAGE','IT_TEST_IMAGE')) {
-            $imageInfo = Invoke-DockerBounded -DockerArgs @('image','inspect','--format','{{.Id}}',$environment[$image]) -LogName ('image-' + $image)
-            $record[$image] = $imageInfo.stdout.Trim()
+            $imageInfo = Invoke-DockerBounded -DockerArgs @('image','inspect','--format','{"Id":{{json .Id}},"Os":{{json .Os}},"Architecture":{{json .Architecture}}}',$environment[$image]) -LogName ('image-' + $image)
+            $details = $imageInfo.stdout | ConvertFrom-Json
+            if ($details.Id -notmatch '^sha256:[0-9a-f]{64}$' -or $details.Os -ne 'linux') { throw 'Expected a local Linux image with a valid image ID' }
+            $record[$image] = $details.Id
+            $record.imagePlatforms[$image] = $details.Os + '/' + $details.Architecture
+            # Pin all subsequent Compose calls, even if a supplied tag is moved.
+            $environment[$image] = $details.Id
         }
         $record.stage = 'scenarios'
         $sequence = 0
@@ -182,13 +211,31 @@ try {
             $record.runs += $current
             [IO.File]::WriteAllText((Join-Path $results 'result.json'), ($record | ConvertTo-Json -Depth 12), $utf8)
             try {
-                Invoke-DockerBounded -DockerArgs ($args + @('run','--rm','--no-deps','-T','prepare')) -TimeoutSeconds 90 -LogName ($prefix + '-prepare') | Out-Null
+                if ($activeScenario -in @('ip','ip-auth')) {
+                    Invoke-DockerBounded -DockerArgs ($args + @('up','-d','--no-deps','--no-build','--pull','never','tester-allowed')) -TimeoutSeconds 90 -LogName ($prefix + '-allowed-start') | Out-Null
+                    $address = Invoke-DockerBounded -DockerArgs ($args + @('exec','-T','tester-allowed','ruby','-rsocket','-e','puts Socket.ip_address_list.select { |a| a.ipv4? && !a.ipv4_loopback? }.map(&:ip_address)')) -TimeoutSeconds 20 -LogName ($prefix + '-allowed-address')
+                    $ip = $null
+                    if (![Net.IPAddress]::TryParse($address.stdout.Trim(), [ref]$ip) -or $ip.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork) { throw 'Expected exactly one IPv4 address for allowed tester' }
+                    $environment.IT_ALLOWED_IP = $ip.ToString()
+                    $current.allowedIp = $environment.IT_ALLOWED_IP
+                    Set-ScenarioEnvironment $activeScenario
+                    $runtimeConfig = Invoke-DockerBounded -DockerArgs ($args + @('config','--format','json')) -TimeoutSeconds 30 -LogName ($prefix + '-runtime-config')
+                    Assert-IsolatedConfig ($runtimeConfig.stdout | ConvertFrom-Json)
+                }
+                Invoke-DockerBounded -DockerArgs ($args + @('run','--pull','never','--rm','--no-deps','-T','prepare')) -TimeoutSeconds 90 -LogName ($prefix + '-prepare') | Out-Null
                 Invoke-DockerBounded -DockerArgs ($args + @('up','-d','--no-build','--pull','never','portal','echo')) -TimeoutSeconds 90 -LogName ($prefix + '-up') | Out-Null
                 $net = Invoke-DockerBounded -DockerArgs @('network','inspect','--format','{{.Internal}}',($project + '_isolated')) -TimeoutSeconds 20 -LogName ($prefix + '-network-internal')
                 if ($net.stdout.Trim() -ne 'true') { throw 'Created network is not internal' }
-                $testArgs = @('run','--rm','--no-deps','-T')
+                $testArgs = @('run','--pull','never','--rm','--no-deps','-T')
                 if ($activeScenario -eq 'never-ready') { $testArgs += @('-e','IT_EXPECTED_BODY=__intentional_readiness_failure__') }
-                if ($activeScenario -in @('persistence','renewal')) {
+                if ($activeScenario -in @('ip','ip-auth')) {
+                    $roleEnv = @('-e',('IT_SCENARIO=' + $activeScenario),'-e',('IT_ALLOWED_IP=' + $environment.IT_ALLOWED_IP))
+                    $allowed = Invoke-DockerBounded -DockerArgs ($args + @('exec','-T') + $roleEnv + @('-e','IT_ROLE=allowed','tester-allowed','ruby','/opt/it/ip_contracts.rb')) -TimeoutSeconds ($StartupTimeoutSeconds + 30) -LogName ($prefix + '-allowed-probe')
+                    $allowedResult = ($allowed.stdout -split '\r?\n' | Where-Object { $_.StartsWith('{') } | Select-Object -Last 1) | ConvertFrom-Json
+                    if ($allowedResult.result -ne 'passed' -or $allowedResult.role -ne 'allowed' -or $allowedResult.source_ip -ne $environment.IT_ALLOWED_IP) { throw 'Invalid allowed tester evidence' }
+                    $current.allowed = $allowedResult
+                    $testArgs += $roleEnv + @('-e','IT_ROLE=denied','tester','ruby','/opt/it/ip_contracts.rb')
+                } elseif ($activeScenario -in @('persistence','renewal')) {
                     Invoke-DockerBounded -DockerArgs ($args + $testArgs + @('-e','IT_PHASE=before','tester','ruby','/opt/it/contracts.rb')) -TimeoutSeconds ($StartupTimeoutSeconds + 30) -LogName ($prefix + '-probe-before') | Out-Null
                     if ($activeScenario -eq 'persistence') {
                         Invoke-DockerBounded -DockerArgs ($args + @('up','-d','--no-deps','--force-recreate','--no-build','--pull','never','portal')) -TimeoutSeconds 90 -LogName ($prefix + '-recreate') | Out-Null
@@ -202,7 +249,12 @@ try {
                 } else {
                     $testArgs += @('tester','ruby','/opt/it/contracts.rb')
                 }
-                Invoke-DockerBounded -DockerArgs ($args + $testArgs) -TimeoutSeconds ($StartupTimeoutSeconds + 30) -LogName ($prefix + '-probe') | Out-Null
+                $probe = Invoke-DockerBounded -DockerArgs ($args + $testArgs) -TimeoutSeconds ($StartupTimeoutSeconds + 30) -LogName ($prefix + '-probe')
+                if ($activeScenario -in @('ip','ip-auth')) {
+                    $deniedResult = ($probe.stdout -split '\r?\n' | Where-Object { $_.StartsWith('{') } | Select-Object -Last 1) | ConvertFrom-Json
+                    if ($deniedResult.result -ne 'passed' -or $deniedResult.role -ne 'denied' -or !$deniedResult.source_ip -or $deniedResult.source_ip -eq $environment.IT_ALLOWED_IP) { throw 'Invalid denied tester evidence' }
+                    $current.denied = $deniedResult
+                }
                 if ($activeScenario -eq 'ca') {
                     $certPublic = Invoke-DockerBounded -DockerArgs ($args + @('exec','-T','portal','openssl','x509','-in','/var/lib/https-portal/tls.test/local/signed.crt','-noout','-pubkey')) -TimeoutSeconds 20 -LogName ($prefix + '-cert-public-key')
                     $keyPublic = Invoke-DockerBounded -DockerArgs ($args + @('exec','-T','portal','openssl','pkey','-in','/var/lib/https-portal/tls.test/local/domain.key','-pubout')) -TimeoutSeconds 20 -LogName ($prefix + '-key-public-part')
