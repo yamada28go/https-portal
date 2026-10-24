@@ -5,7 +5,7 @@ require 'rbconfig'
 require 'tmpdir'
 
 root = File.expand_path('..', __dir__)
-paths = %w[spec/models/domain_spec.rb spec/contracts]
+paths = %w[spec/models/domain_spec.rb spec/models/domain_input_spec.rb spec/contracts]
 log_dir = File.join(__dir__, 'test-results')
 FileUtils.mkdir_p(log_dir)
 log = File.open(File.join(log_dir, 'p1-check.log'), 'w')
@@ -36,10 +36,11 @@ begin
   end
   puts 'Ruby syntax: PASS'
   [1, 17, 101].each do |seed|
-    run.call(root, "All 54 cases, seed #{seed}", [*paths, '--seed', seed.to_s], 54, 0)
+    run.call(root, "All 83 cases, seed #{seed}", [*paths, '--seed', seed.to_s], 83, 0)
   end
   {
     'spec/models/domain_spec.rb' => 26,
+    'spec/models/domain_input_spec.rb' => 29,
     'spec/contracts/nginx_http_spec.rb' => 4,
     'spec/contracts/nginx_tls_spec.rb' => 4,
     'spec/contracts/nginx_access_spec.rb' => 5,
@@ -78,7 +79,7 @@ begin
       raise "#{id}: restoration failed" unless File.binread(path) == original
       run.call(scratch, "#{id} restored", args, 1, 0)
     end
-    run.call(scratch, 'All cases after restoration', paths, 54, 0)
+    run.call(scratch, 'All cases after restoration', paths, 83, 0)
   end
   log.puts "\nAll P1 automated checks passed. Human review remains separate."
   puts 'P1 checks passed. Evidence: dev/test-results/p1-check.log'

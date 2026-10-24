@@ -14,7 +14,7 @@ git status --short
 .\dev\dev.ps1 Setup
 ```
 
-SetupはCompose設定検証、Engine接続・Linux確認、ビルド、起動、バージョン表示、lock固定でのGem導入、P1の54例を順に行う。失敗時はその場で停止する。Codexログインは別工程。既存の変更をコミット・破棄する処理は行わない。
+SetupはCompose設定検証、Engine接続・Linux確認、ビルド、起動、バージョン表示、lock固定でのGem導入、P1の83例を順に行う。失敗時はその場で停止する。Codexログインは別工程。既存の変更をコミット・破棄する処理は行わない。
 
 PowerShellの実行ポリシーでps1が拒否された場合、組織のポリシーに従う。スクリプトを使わない場合は以下の直接コマンドでも実施できる。
 
@@ -52,7 +52,7 @@ docker compose -p https-portal-dev -f dev/compose.dev.yaml exec dev codex --sand
 # コンテナ内Bash
 .\dev\dev.ps1 Shell
 
-# P1の54例（ドメイン解析26、Nginx設定20、更新判定8）
+# P1の83例（ドメイン解析26、異常入力29、Nginx設定20、更新判定8）
 .\dev\dev.ps1 Test
 
 # バージョン、共有領域の書込権限、ソケット非共有、P1テストを確認
@@ -71,10 +71,10 @@ Stop後の起動は次を使う。イメージ変更後はSetupを再実行す�
 docker compose -p https-portal-dev -f dev/compose.dev.yaml up -d dev
 ```
 
-P1のUTは次の直接コマンドでも実行できる。54例の対応は[テスト対応表](../../docs/test-contract-matrix-ja.md)を参照。
+P1のUTは次の直接コマンドでも実行できる。83例の対応は[テスト対応表](../../docs/test-contract-matrix-ja.md)を参照。
 
 ```powershell
-docker compose -p https-portal-dev -f dev/compose.dev.yaml run --rm test bundle exec rspec spec/models/domain_spec.rb spec/contracts --format documentation
+docker compose -p https-portal-dev -f dev/compose.dev.yaml run --rm test bundle exec rspec spec/models/domain_spec.rb spec/models/domain_input_spec.rb spec/contracts --format documentation
 ```
 
 テスト対象を指定せず全スイートを実行すると、既存のDocker機能テストも含まれる。P1は必ず対象パスを指定する。SKIP_BUILD=1は両サービスに設定済み。
@@ -129,4 +129,20 @@ testにはCodex volumeを渡さず、Gem volumeを読み取り専用、ネット
 .\dev\dev.ps1 P1
 ```
 
-構文、54例の3 seed、各spec単独、M01〜M05の検知と復元を検査する。証跡はdev/test-results/p1-check.log（Git対象外）。Mutationは一時コピー上で行い、元の製品コードは変更しない。詳細は[Mutation手順](../../docs/mutation-check-ja.md)を参照。
+構文、83例の3 seed、各spec単独、M01〜M05の検知と復元を検査する。証跡はdev/test-results/p1-check.log（Git対象外）。Mutationは一時コピー上で行い、元の製品コードは変更しない。詳細は[Mutation手順](../../docs/mutation-check-ja.md)を参照。
+
+## PowerShellの画面出力をログへ保存
+
+プロジェクトルートで実行する。最初に保存先を作成するため、構築前にテストが失敗してもログを保存できる。
+
+```powershell
+New-Item -ItemType Directory -Force .\dev\test-results | Out-Null
+$logPath = Join-Path (Get-Location).Path 'dev\test-results\p1-console.log'
+.\dev\dev.ps1 P1 *>&1 | Tee-Object -FilePath $logPath
+```
+
+画面とp1-console.logに、標準出力とエラーを保存する。P1検証の詳細ログは別途p1-check.logに出力される。
+
+Windows PowerShell 5.1では、Dockerがstderrへ出すCreating等の進捗がNativeCommandErrorへ変換される。dev.ps1は非対話コマンドの出力を文字列として統合し、終了コード0なら継続、非0なら例外で停止する。Shell/Login/Codexは対話用の標準入出力を維持するため、通常はリダイレクトせず使用する。
+
+スクリプトは呼び出し元の作業フォルダを変更しない。ログ保存先も実行前に絶対パスへ解決し、パイプライン内での相対パス解決の影響を避ける。

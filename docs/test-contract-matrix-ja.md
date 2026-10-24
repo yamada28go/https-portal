@@ -2,28 +2,28 @@
 
 ## 実装・検証状態
 
-D26例、H4例、T4例、A5例、R7例、C8例、合計54例を実装した。製品コードと既存Docker機能テストは変更していない。
+D26例、H4例、T4例、A5例、R7例、C8例、従来54例に加え、C-02の異常入力29例を追加し、合計83例を実装した。製品コードと既存Docker機能テストは変更していない。
 
-実施済み：Ruby公式Prism 2.0.0のJavaScript/WASM版による追加・変更Rubyファイル9本の構文解析、既存26行の入力・期待値とHEADの一致、Compose/PowerShell構文、Composeの54例実行パス確認。Prismは作業用一時領域だけに展開し、Ruby/GemはWindowsへ導入していない。この解析はRuby 2.7.2による実行確認の代わりにはならない。
+実施済み：Ruby公式Prism 2.0.0のJavaScript/WASM版による追加・変更Rubyファイル10本の構文解析、既存26行の入力・期待値とHEADの一致、Compose/PowerShell構文、Composeの54例実行パス確認。Prismは作業用一時領域だけに展開し、Ruby/GemはWindowsへ導入していない。この解析はRuby 2.7.2による実行確認の代わりにはならない。
 
-**RSpec・3 seed実行・各spec単独実行・Mutationは未実行。** Docker Engineの名前付きパイプに対する接続拒否が継続している。P0成果との照合、fixtureの人によるレビューも未完了。54例が緑、Mutationを検知済み、P1完了とは扱わない。
+**従来54例のRSpec・3 seed・各spec単独・M01〜M05は利用者提供の実行結果で成功を確認済み。追加29例と全83例は未実行。** Docker Engineの名前付きパイプに対する接続拒否が継続している。P0成果との照合、fixtureの人によるレビューも未完了。追加分まで検証済み、またはP1全体が完了とは扱わない。
 
 ## 実行
 
 プロジェクトルートのPowerShellから：
 
 ```powershell
-# 54例のUT・設定契約のみ
+# 83例のUT・設定契約のみ
 .\dev\dev.ps1 Test
 
-# 構文、3 seed、各spec単独、M01〜M05と復元の一括検証
+# 構文、83例の3 seed、各spec単独、M01〜M05と復元の一括検証
 .\dev\dev.ps1 P1
 ```
 
 Ruby環境内での直接実行：
 
 ```bash
-SKIP_BUILD=1 bundle exec rspec spec/models/domain_spec.rb spec/contracts --format documentation
+SKIP_BUILD=1 bundle exec rspec spec/models/domain_spec.rb spec/models/domain_input_spec.rb spec/contracts --format documentation
 SKIP_BUILD=1 bundle exec ruby dev/check_p1.rb
 ```
 
@@ -116,3 +116,7 @@ HTTP/TLS/認証/ルーティングの試験は生成設定の検証。実通信�
 - [詳細計画](https-portal-p1-detailed-test-plan-ja.md)
 
 G01〜G07の実行証跡とG08のレビュー承認は、自動検証と人によるレビュー完了後に記録する。
+
+## C-02の追加29例
+
+`spec/models/domain_input_spec.rb`に空値・ポート・制御文字・不正構文と現行の未検証入力の扱いを追加。[ケース一覧・実行手順・既知の差](c02-input-contract-ja.md)を参照。製品の入力検証は変更していない。

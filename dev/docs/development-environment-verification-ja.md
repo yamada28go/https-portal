@@ -59,3 +59,17 @@ Compose、PowerShell、開発環境計画・手順・検証記録、改行設定
 ## P1 UTの実装
 
 54例のUT・設定契約を追加し、testサービスの既定対象をドメイン解析とspec/contractsへ変更した。dev.ps1 P1で構文・順序変更・単独実行・Mutationをまとめて実行できる。構文はPrismで確認し、既存入力・期待値26行の保持をHEADとの差分で確認した。実RSpecとMutationはDocker Engine接続拒否により未実行。詳細はプロジェクトdocsのtest-contract-matrix-ja.mdを参照。
+
+## C-02追加後
+
+既存54例の実RSpec・3 seed・各spec単独・M01〜M05検知と復元は利用者提供出力で成功確認済み。C-02の29例追加により既定対象を83例へ拡張した。追加後はPrism構文、ケース数、Compose実行パス等を確認したが、83例の実行はこのチャットのDocker接続制約により未確認。最新状況はプロジェクトdocs/c02-input-contract-ja.mdを参照。
+
+## Windows PowerShellでの出力リダイレクト修正
+
+Dockerの正常なstderr進捗がWindows PowerShell 5.1でNativeCommandErrorへ変換され、ErrorActionPreference=Stopにより中断する問題を修正した。非対話コマンドはstderr/stdoutを文字列へ統合し、終了コードで成否を判断する。対話操作は標準入出力を維持し、呼び出し元の設定は変更しない。
+
+Windows PowerShell 5.1とPowerShell 7.6で、ネイティブコマンドの代役を使い「stderrあり・終了0で継続しTee-Objectへ保存」「終了7で例外」「呼び出し元のStop設定を保持」を確認した。実Dockerによる83例の再実行は、このチャットからは未確認。
+
+## パイプラインのログ保存先修正
+
+Push-Location/Pop-Locationを除去し、絶対パスのCompose設定を使って呼び出し元の作業フォルダを維持するよう修正。PowerShell 5.1/7で、スクリプト全体のP1アクションを模擬Dockerと実行し、相対パスのTee-Objectが正しい場所へ保存することと、作業フォルダ保持を確認した。手順ではログの絶対パスも実行前に確定する。実DockerによるUTはこの検証に含まない。
