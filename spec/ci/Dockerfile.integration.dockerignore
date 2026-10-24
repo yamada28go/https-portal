@@ -1,0 +1,5 @@
+**
+!spec/
+!spec/ci/
+!spec/ci/integration/
+!spec/ci/integration/*.rb

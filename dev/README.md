@@ -20,3 +20,7 @@ Composeは親ディレクトリのプロジェクト全体を/workspaceに共有
 P1の113例：`.\dev\dev.ps1 Test`。順序変更・単独実行・Mutation検証：`.\dev\dev.ps1 P1`。
 
 P2-01の最小Ruby環境：`.\dev\check_p2_baseline.ps1`。[実行と検証条件](../spec/ci/README.md)を参照。
+
+## Docker試験基盤（P2-03）
+
+プロジェクトルートで `.\dev\check_p2_integration.ps1 -Repeat 2`。[実行・受入手順](docs/30-p2-ci/34-integration-guide-ja.md)を参照。実Dockerの起動確認は利用者側で行う。

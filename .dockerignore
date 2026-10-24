@@ -3,3 +3,8 @@ spec/
 examples/
 Gemfile
 Gemfile.lock
+
+# Development artifacts and Git metadata are not product build inputs.
+.git/
+dev/
+.github/

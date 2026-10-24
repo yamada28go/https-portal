@@ -65,7 +65,7 @@ P2の成果は、PRで `lint-and-unit` と `docker-smoke` が自動起動し、�
 
 ### 3.2 Docker試験の独立化
 
-Linux CIホストが `spec/ci/run-integration.sh` でDockerを操作し、`spec/ci/compose.yaml` のportal、HTTP echo、testerを実行する。testerへDocker socketを渡さない。WindowsでもDocker CLI経由で同じ入口を呼び出せるようにする。
+共通入口の `dev/check_p2_integration.ps1` がDockerを操作し、`spec/ci/compose.yaml` のportal、HTTP echo、testerを実行する。testerへDocker socketを渡さない。WindowsではPowerShell、Linuxではpwshで同じ入口を使う。P2-03基盤は実装済み・実Docker受入待ち。[実行手順](34-integration-guide-ja.md)を参照。
 
 - 製品はルートDockerfileから一度ビルドし、全fixtureで同じローカルタグを使う。レジストリ公開は不要。
 - echoはpath/query、Host、X-Real-IP、X-Forwarded-For、X-Forwarded-Protoを判定可能な形式で返す。環境変数を全量返す実装は避ける。
@@ -156,7 +156,7 @@ spec/ci/
   Dockerfile.unit
   compose.yaml
   run-unit.sh
-  run-integration.sh
+  # integration入口はdev/check_p2_integration.ps1
   generate-cert-fixtures.sh
   integration_spec.rb
   support/                 # lifecycle、HTTP/TLS、診断

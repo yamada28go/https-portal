@@ -6,7 +6,7 @@
 
 ## 実装状態
 
-workflowとLinux対応を実装し、actionlintとPowerShell構文検査に成功した。GitHubへのcommit/push・実行は利用者が行う。GitHub上の成功・故意変更の失敗検知は、まだ未確認。P2-02の受入完了とはしていない。
+workflowとLinux対応を実装し、actionlintとPowerShell構文検査に成功した。Run ID 40068897258でpush自動起動・lint-and-unit成功・artifact保存を確認済み。PR・手動起動・故意変更での失敗と復元は未確認のため、P2-02の全受入完了とはしていない。詳細は検証記録を参照する。
 
 ## 実行される内容
 
@@ -68,7 +68,8 @@ artifactの対象は上記5種類のみ。Git管理情報・ソース全体・�
 - [x] Tests / lint-and-unitを実装
 - [x] 完全SHA固定、最小権限、timeout、ログ保存を設定
 - [x] actionlint・PowerShell構文・差分チェックを実施
-- [ ] push/PRで自動起動と成功を確認
+- [x] pushで自動起動と成功を確認（Run ID 40068897258）
+- [ ] PRで自動起動と成功を確認
 - [ ] 手動起動を確認
 - [ ] 故意変更でジョブ失敗・診断artifactを確認
 - [ ] 復元後に成功することを確認し、runを記録

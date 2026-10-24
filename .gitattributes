@@ -1,0 +1,2 @@
+# Linux runtime files must not be checked out with Windows line endings.
+fs_overlay/** text=auto eol=lf

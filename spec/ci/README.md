@@ -43,3 +43,7 @@ host-run.jsonはDocker起動側、baseline.jsonはコンテナ内検証の記録
 ## GitHub Actions
 
 Tests / lint-and-unitも同じスクリプトを使用する。[CI実行・受入手順](../../dev/docs/30-p2-ci/33-ci-test-guide-ja.md)を参照。Linuxでは実行専用の結果ディレクトリだけ書き込みを許可する。GitHubでの成功は実行後に確認する。
+
+## Docker試験基盤（P2-03）
+
+プロジェクトルートで `.\dev\check_p2_integration.ps1 -Repeat 2`。[実行・受入手順](../../dev/docs/30-p2-ci/34-integration-guide-ja.md)を参照。実Dockerの起動確認は利用者側で行う。

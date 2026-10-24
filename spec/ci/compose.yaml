@@ -1,0 +1,50 @@
+# No ports, socket, host bind mounts, external volumes or public CA.
+services:
+  portal:
+    image: ${IT_PORTAL_IMAGE:?Set IT_PORTAL_IMAGE}
+    pull_policy: never
+    environment:
+      STAGE: local
+      DOMAINS: portal.test
+      FORCE_RENEW: "false"
+      ACCESS_LOG: stdout
+      ERROR_LOG: stderr
+    extra_hosts:
+      # Avoid default-route discovery on the isolated network.
+      dockerhost: "127.0.0.1"
+    volumes:
+      - certificates:/var/lib/https-portal
+      - nginx-logs:/var/log/nginx
+    networks:
+      isolated:
+        aliases: [portal.test]
+  echo:
+    image: ${IT_TEST_IMAGE:?Set IT_TEST_IMAGE}
+    pull_policy: never
+    command: [ruby, /opt/it/echo.rb]
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    networks: [isolated]
+  tester:
+    image: ${IT_TEST_IMAGE:?Set IT_TEST_IMAGE}
+    pull_policy: never
+    profiles: [test]
+    command: [ruby, /opt/it/probe.rb]
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: [/tmp]
+    environment:
+      IT_TARGET_HOST: portal.test
+      IT_STARTUP_TIMEOUT_SECONDS: ${IT_STARTUP_TIMEOUT_SECONDS:-180}
+    networks: [isolated]
+networks:
+  isolated:
+    internal: true
+volumes:
+  certificates:
+  nginx-logs:
