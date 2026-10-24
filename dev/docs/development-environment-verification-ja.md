@@ -55,3 +55,7 @@ Setupが成功したら、日付・バージョン出力・テストの件数と
 Compose、PowerShell、開発環境計画・手順・検証記録、改行設定をdev配下に集約。Composeのbuild contextはdev自身、bind mount元は親のプロジェクトルートに修正した。
 
 移動後のCompose構文、PowerShell構文、展開されたbuild contextと両サービスのbind mount元、GitのLF指定、git diff --checkを確認し成功した。実ビルドは引き続き未確認。
+
+## P1 UTの実装
+
+54例のUT・設定契約を追加し、testサービスの既定対象をドメイン解析とspec/contractsへ変更した。dev.ps1 P1で構文・順序変更・単独実行・Mutationをまとめて実行できる。構文はPrismで確認し、既存入力・期待値26行の保持をHEADとの差分で確認した。実RSpecとMutationはDocker Engine接続拒否により未実行。詳細はプロジェクトdocsのtest-contract-matrix-ja.mdを参照。

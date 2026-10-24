@@ -14,7 +14,7 @@ git status --short
 .\dev\dev.ps1 Setup
 ```
 
-SetupはCompose設定検証、Engine接続・Linux確認、ビルド、起動、バージョン表示、lock固定でのGem導入、既存ドメイン解析テストを順に行う。失敗時はその場で停止する。Codexログインは別工程。既存の変更をコミット・破棄する処理は行わない。
+SetupはCompose設定検証、Engine接続・Linux確認、ビルド、起動、バージョン表示、lock固定でのGem導入、P1の54例を順に行う。失敗時はその場で停止する。Codexログインは別工程。既存の変更をコミット・破棄する処理は行わない。
 
 PowerShellの実行ポリシーでps1が拒否された場合、組織のポリシーに従う。スクリプトを使わない場合は以下の直接コマンドでも実施できる。
 
@@ -52,10 +52,10 @@ docker compose -p https-portal-dev -f dev/compose.dev.yaml exec dev codex --sand
 # コンテナ内Bash
 .\dev\dev.ps1 Shell
 
-# 既存ドメイン解析テストのみ（26入力が1つのRSpec例に集約）
+# P1の54例（ドメイン解析26、Nginx設定20、更新判定8）
 .\dev\dev.ps1 Test
 
-# バージョン、共有領域の書込権限、ソケット非共有、既存テストを確認
+# バージョン、共有領域の書込権限、ソケット非共有、P1テストを確認
 .\dev\dev.ps1 Verify
 
 # コンテナ再作成とGem保持・テストの確認
@@ -71,7 +71,7 @@ Stop後の起動は次を使う。イメージ変更後はSetupを再実行す�
 docker compose -p https-portal-dev -f dev/compose.dev.yaml up -d dev
 ```
 
-P1の契約テスト実装後は次を実行できる。現時点ではspec/contractsが未作成のため実行しない。
+P1のUTは次の直接コマンドでも実行できる。54例の対応は[テスト対応表](../../docs/test-contract-matrix-ja.md)を参照。
 
 ```powershell
 docker compose -p https-portal-dev -f dev/compose.dev.yaml run --rm test bundle exec rspec spec/models/domain_spec.rb spec/contracts --format documentation
@@ -122,3 +122,11 @@ testにはCodex volumeを渡さず、Gem volumeを読み取り専用、ネット
 - [Codex認証](https://learn.chatgpt.com/docs/auth)
 - [権限とDev Containers](https://learn.chatgpt.com/docs/agent-approvals-security#run-codex-in-dev-containers)
 - [Docker bind mounts](https://docs.docker.com/engine/storage/bind-mounts/)
+
+## P1の順序変更・Mutation検証
+
+```powershell
+.\dev\dev.ps1 P1
+```
+
+構文、54例の3 seed、各spec単独、M01〜M05の検知と復元を検査する。証跡はdev/test-results/p1-check.log（Git対象外）。Mutationは一時コピー上で行い、元の製品コードは変更しない。詳細は[Mutation手順](../../docs/mutation-check-ja.md)を参照。

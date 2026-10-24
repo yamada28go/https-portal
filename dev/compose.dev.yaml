@@ -51,7 +51,7 @@ services:
         source: gems
         target: /bundle
         read_only: true
-    command: ["bundle", "exec", "rspec", "spec/models/domain_spec.rb", "--format", "documentation"]
+    command: ["bundle", "exec", "rspec", "spec/models/domain_spec.rb", "spec/contracts", "--format", "documentation"]
 volumes:
   gems:
   codex:

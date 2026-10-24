@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Setup', 'Shell', 'Login', 'Codex', 'Test', 'Verify', 'Stop', 'Recreate')]
+    [ValidateSet('Setup', 'Shell', 'Login', 'Codex', 'Test', 'Verify', 'Stop', 'Recreate', 'P1')]
     [string]$Action = 'Shell',
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$ExtraArgs
@@ -29,11 +29,12 @@ try {
             Invoke-DevDocker -DockerArgs @('exec', '-T', 'dev', 'bundle', '_2.2.4_', 'install', '--frozen')
             Invoke-DevDocker -DockerArgs @('exec', '-T', 'dev', 'bundle', '_2.2.4_', 'check')
             Invoke-DevDocker -DockerArgs @('run', '--rm', 'test')
-            Write-Host 'Setup and existing domain smoke test passed. Next from project root: .\dev\dev.ps1 Login'
+            Write-Host 'Setup and P1 unit tests passed. Next from project root: .\dev\dev.ps1 Login'
         }
         'Shell' { Invoke-DevDocker -DockerArgs @('exec', 'dev', 'bash') }
         'Login' { Invoke-DevDocker -DockerArgs @('exec', 'dev', 'codex', 'login', '--device-auth') }
         'Codex' { Invoke-DevDocker -DockerArgs (@('exec', 'dev', 'codex-dev') + $ExtraArgs) }
+        'P1' { Invoke-DevDocker -DockerArgs @('run', '--rm', 'test', 'bundle', 'exec', 'ruby', 'dev/check_p1.rb') }
         'Test' { Invoke-DevDocker -DockerArgs (@('run', '--rm', 'test') + $ExtraArgs) }
         'Verify' {
             Invoke-DevDocker -DockerArgs @('config', '--quiet')
