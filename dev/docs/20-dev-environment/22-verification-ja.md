@@ -1,12 +1,26 @@
 # Docker開発環境：検証記録
 
+用途：開発環境の計画・操作・検証。最新結果は検証記録の先頭を参照。  
+[文書一覧](../00-index-ja.md) / [操作手順](21-guide-ja.md) / [検証記録](22-verification-ja.md)
+
 実施日：2026-10-24（日本時間）
 
-## 結果
+## 最新状況（2026-10-24の保存ログを確認）
+
+- `dev/test-results/p1-console.log` と `p1-check.log` に、113例の3 seed、9ファイル単独、M01〜M08の検知・復元、復元後113例の成功記録がある。
+- これは保存ログの確認結果。この整理作業でDocker・RSpecを再実行したものではなく、ログにはHEADの記録がない。
+- Codex認証・再作成後の保持等は、このログだけでは確認できない。以下の未確認事項を一括して完了にはしない。
+- P2は計画作成まで。次は[P2実施手順](../30-p2-ci/30-execution-guide-ja.md)を参照する。
+
+## 過去の検証・作業記録
+
+以下の「未確認」「次に実行する操作」は各作業時点の記録。最新のP1実行状況は上記を参照する。
+
+### 初期の結果
 
 **設定ファイルと手順は作成済み。実ビルド・コンテナ起動・RSpec・Codex認証は未確認。** このチャットの実行環境はDocker Desktopの名前付きパイプへの接続が拒否される。ファイルシステム権限とネットワーク権限を取得しても同じ結果だった。パイプを追加権限として指定する試みも、権限ツールがパスを表現できず失敗した。利用者の通常PowerShellでの動作とは区別する。
 
-## 実施済み
+### 実施済み
 
 | 確認 | 結果 |
 |---|---|
@@ -28,7 +42,7 @@ Node digest: sha256:73a9dfbb6c761aebdf4666cce2627635a30d1d4c20f67ff642d01b8f09e7
 
 取得時のregistry tokenはファイルやログに保存していない。
 
-## 未確認の項目
+### 未確認の項目
 
 - [ ] イメージのビルドとRuby/Node/Codexの実起動、共有ライブラリ互換性。
 - [ ] named volumeの初回所有権、非rootによる書き込み。
@@ -36,7 +50,7 @@ Node digest: sha256:73a9dfbb6c761aebdf4666cce2627635a30d1d4c20f67ff642d01b8f09e7
 - [ ] Codexのdevice code認証、編集、Linuxサンドボックスの互換性。
 - [ ] コンテナ再作成後のGem・認証・設定保持。
 
-## 次に実行する操作
+### 次に実行する操作
 
 利用者のPowerShellでプロジェクトへ移動し、以下を実行する。
 
@@ -50,31 +64,31 @@ Setupが成功したら、日付・バージョン出力・テストの件数と
 
 その後、VerifyとRecreateで権限・テスト・再作成を確認する。P1の54件追加はこの環境検証完了後に実施する。
 
-## dev配下への集約（2026-10-24）
+### dev配下への集約（2026-10-24）
 
 Compose、PowerShell、開発環境計画・手順・検証記録、改行設定をdev配下に集約。Composeのbuild contextはdev自身、bind mount元は親のプロジェクトルートに修正した。
 
 移動後のCompose構文、PowerShell構文、展開されたbuild contextと両サービスのbind mount元、GitのLF指定、git diff --checkを確認し成功した。実ビルドは引き続き未確認。
 
-## P1 UTの実装
+### P1 UTの実装
 
 54例のUT・設定契約を追加し、testサービスの既定対象をドメイン解析とspec/contractsへ変更した。dev.ps1 P1で構文・順序変更・単独実行・Mutationをまとめて実行できる。構文はPrismで確認し、既存入力・期待値26行の保持をHEADとの差分で確認した。実RSpecとMutationはDocker Engine接続拒否により未実行。詳細はプロジェクトdocsのtest-contract-matrix-ja.mdを参照。
 
-## C-02追加後
+### C-02追加後
 
 既存54例の実RSpec・3 seed・各spec単独・M01〜M05検知と復元は利用者提供出力で成功確認済み。C-02の29例追加により既定対象を83例へ拡張した。追加後はPrism構文、ケース数、Compose実行パス等を確認したが、83例の実行はこのチャットのDocker接続制約により未確認。最新状況はプロジェクトdocs/c02-input-contract-ja.mdを参照。
 
-## Windows PowerShellでの出力リダイレクト修正
+### Windows PowerShellでの出力リダイレクト修正
 
 Dockerの正常なstderr進捗がWindows PowerShell 5.1でNativeCommandErrorへ変換され、ErrorActionPreference=Stopにより中断する問題を修正した。非対話コマンドはstderr/stdoutを文字列へ統合し、終了コードで成否を判断する。対話操作は標準入出力を維持し、呼び出し元の設定は変更しない。
 
 Windows PowerShell 5.1とPowerShell 7.6で、ネイティブコマンドの代役を使い「stderrあり・終了0で継続しTee-Objectへ保存」「終了7で例外」「呼び出し元のStop設定を保持」を確認した。実Dockerによる83例の再実行は、このチャットからは未確認。
 
-## パイプラインのログ保存先修正
+### パイプラインのログ保存先修正
 
 Push-Location/Pop-Locationを除去し、絶対パスのCompose設定を使って呼び出し元の作業フォルダを維持するよう修正。PowerShell 5.1/7で、スクリプト全体のP1アクションを模擬Dockerと実行し、相対パスのTee-Objectが正しい場所へ保存することと、作業フォルダ保持を確認した。手順ではログの絶対パスも実行前に確定する。実DockerによるUTはこの検証に含まない。
 
-## C-07/C-08の現行動作固定
+### C-07/C-08の現行動作固定
 
 利用者の指示で現行動作を正解とし、ACME署名12例とNginx書き込み・reload18例を追加。既定対象は113例、MutationはM01〜M08へ拡張した。PrismによるRuby構文、30例のID・件数、単独実行件数の合計113、Mutationの一意な変更箇所、Compose構文、git diff --checkを確認した。製品コード・依存バージョン・既存83例は変更していない。
 
