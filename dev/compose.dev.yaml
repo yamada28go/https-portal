@@ -1,0 +1,57 @@
+name: https-portal-dev
+x-environment: &environment
+  HOME: /home/dev
+  CODEX_HOME: /home/dev/.codex
+  BUNDLE_PATH: /bundle
+  BUNDLE_APP_CONFIG: /tmp/https-portal-bundle-config
+  BUNDLE_IGNORE_CONFIG: "1"
+  SKIP_BUILD: "1"
+  LANG: C.UTF-8
+services:
+  dev:
+    image: https-portal-dev:ruby2.7.2-codex0.164.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /workspace
+    user: "1000:1000"
+    init: true
+    stdin_open: true
+    tty: true
+    environment: *environment
+    volumes:
+      - type: bind
+        source: ..
+        target: /workspace
+      - type: volume
+        source: gems
+        target: /bundle
+      - type: volume
+        source: codex
+        target: /home/dev/.codex
+    command: ["sleep", "infinity"]
+  test:
+    image: https-portal-dev:ruby2.7.2-codex0.164.0
+    pull_policy: never
+    profiles: ["test"]
+    working_dir: /workspace
+    user: "1000:1000"
+    init: true
+    network_mode: none
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      <<: *environment
+      BUNDLE_FROZEN: "true"
+    volumes:
+      - type: bind
+        source: ..
+        target: /workspace
+      - type: volume
+        source: gems
+        target: /bundle
+        read_only: true
+    command: ["bundle", "exec", "rspec", "spec/models/domain_spec.rb", "--format", "documentation"]
+volumes:
+  gems:
+  codex:
