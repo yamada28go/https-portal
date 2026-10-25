@@ -1,8 +1,10 @@
 # HTTPS-PORTAL
 
-[![Tests (UT + integration)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml/badge.svg?event=push)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml) [![Security report](https://github.com/yamada28go/https-portal/actions/workflows/security.yml/badge.svg)](https://github.com/yamada28go/https-portal/actions/workflows/security.yml)
+[![Tests (UT + integration)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml/badge.svg?event=push)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml) [![Security report](https://github.com/yamada28go/https-portal/actions/workflows/security.yml/badge.svg)](https://github.com/yamada28go/https-portal/actions/workflows/security.yml) [![Critical findings](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fyamada28go%2Fhttps-portal%2Fsecurity-badges%2Fcritical.json&cacheSeconds=300)](https://github.com/yamada28go/https-portal/blob/security-badges/latest.json) [![High findings](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fyamada28go%2Fhttps-portal%2Fsecurity-badges%2Fhigh.json&cacheSeconds=300)](https://github.com/yamada28go/https-portal/blob/security-badges/latest.json)
 
 Security reporting is report-only: a passing badge means vulnerability scanning and SBOM collection completed successfully, not that the image has no vulnerabilities.
+
+Counts show package-level findings from the latest successful scan of the default branch. Click a count for the scan date and source run. Values remain from the last successful scan if a later scan fails; they are unavailable until the first publication.
 
 HTTPS-PORTAL is a fully automated HTTPS server powered by
 [Nginx](http://nginx.org), [Let's Encrypt](https://letsencrypt.org) and

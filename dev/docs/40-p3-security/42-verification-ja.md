@@ -407,3 +407,14 @@ Linux用の契約では実Unix modeを設定し、Other非公開・archive group
 判定：Linux bindアクセス・隠しfixture cleanup修正を含むsecurity-reportのpush成功を確認。ローカル製品収集成功に加え、GitHub Actionsの収集ジョブが成功した。公開画面ではログ閲覧にSign inが必要で、artifactの内部JSON/SBOM/hash/cleanupやCI側の重大度別件数は未照合。artifact生成確認と内容確認を区別する。ローカルのCritical 12/High 135をCI結果として転記しない。
 
 次：artifactを取得できる環境でresult=collected/complete、cleanup、image/config ID対応、成果物hash、SBOM、検出件数を照合する。その後Critical/Highの一次分類と修正・期限付き例外の方針を確定する。report-onlyは維持。PR/手動/日次の起動・必須チェック・重大度ゲート等のP3残要件は別途受入する。
+
+## Critical／High件数バッジの実装（2026-10-25）
+
+日英READMEにShields endpointのCritical／Highバッジを追加し、成功収集のsummary/resultから件数と最小metadataを生成するdev/security/badges.ps1、公開用publish-badges.ps1、check-badges.ps1を追加した。security-reportで公開用JSONをartifactとjob outputへ生成し、別のpublish-count-badgesジョブが既定ブランチの成功時だけ専用security-badgesブランチへ3 JSONを作成/更新する。
+
+既存の収集ジョブ・PRはcontents:readを維持し、既定ブランチ限定の公開ジョブだけcontents:write。追加Secrets/Pages不要。対象HEADの再確認、古いrunのskip、既存別用途branchの拒否、通常のfast-forward更新を実装。Critical/Highはパッケージ等ごとの検出レコード数を表示し、CVE異なり数とはしない。検査失敗時は前回成功値を維持する。READMEに既定ブランチ対象・日時確認・初回公開待ちの意味を明記。report-onlyと閾値未導入は維持。
+
+検証：PS7で件数/色/0件、不正件数、失敗・cleanup異常、ID/件数不一致、公開metadata制限、PR、初回作成/通常更新/古いrun、branch衝突/API異常の22件成功。PowerShell 7/5.1構文・actionlint成功。実ローカルsummaryのCritical 12/High 135が正しくJSONへ変換されるsmokeも確認した（source metadataは合成したQAのみ。CI結果として公開していない）。外部APIは代役であり、実GitHub公開とREADME表示の受入は変更反映後のActions待ち。ローカルからのcommit/pushやremote branch作成は行っていない。
+
+[46 件数バッジの更新方式・初回受入](46-security-count-badges-ja.md)を参照。作業ブランチへのpushでは検証/成果物生成までで、件数は公開しない。既定ブランチ反映後のsecurity-reportとpublish-count-badges成功、3 JSONと元run、README表示の一致を受入する。
+証跡：dev/test-results/p3-security-harness/count-badges-20261025T083727Z/。

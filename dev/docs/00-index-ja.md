@@ -81,3 +81,5 @@ TLS変更のActions確認：run 40163898918 / commit 2fe7819でlint-and-unit・d
 手順6初期のローカル収集受入成功：20261025t071211z-49f60b78で製品レポート/SBOMを生成し、両DB・ID対応・成果物hash・cleanupを照合。Critical 12 / High 135を含むreport-only収集。次はsecurity-report Actionsとartifactの受入、重大検出の一次分類。P3全体完了・脆弱性解消とはしない。
 
 手順6初期のActions成功：run 40174288486 / commit a1301d7でsecurity-reportのpush実行成功（2m58s）、security-evidence artifact 1件（518 KB）生成を確認。ログ・artifact内部は要サインインのため未照合。次は成果物内容確認と重大検出の一次分類。
+
+[46 Critical／High件数バッジ](40-p3-security/46-security-count-badges-ja.md)を追加。既定ブランチの成功検査だけ専用security-badgesブランチへ集計値を公開する実装を追加。PR/作業ブランチはartifactのみで公開しない。実公開の受入は変更反映後のActions待ち。

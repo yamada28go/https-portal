@@ -19,6 +19,8 @@ jobs:
     name: security-report
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    outputs:
+      badge_data: ${{ steps.collect.outputs.badge_data }}
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -26,12 +28,14 @@ jobs:
           persist-credentials: false
 
       - name: Prepare image and DB, then collect offline security evidence
+        id: collect
         shell: pwsh
         timeout-minutes: 40
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $false
           ./dev/security/check-contracts.ps1
+          ./dev/security/check-badges.ps1
           $image = 'https-portal-security:' + $env:GITHUB_SHA
           & docker build --progress=plain --tag $image .
           if ($LASTEXITCODE -ne 0) { throw 'Product image build failed' }
@@ -39,6 +43,11 @@ jobs:
           ./dev/check_p3_security.ps1 -PortalImage $image -PreparationFile $prepared.PreparationFile
           $resultDir = Get-ChildItem dev/test-results/p3-security -Directory | Sort-Object Name | Select-Object -Last 1
           $summary = Get-Content -Raw -LiteralPath (Join-Path $resultDir.FullName 'summary.json') | ConvertFrom-Json
+          . ./dev/security/badges.ps1
+          $result = Get-Content -Raw -LiteralPath (Join-Path $resultDir.FullName 'result.json') | ConvertFrom-Json
+          $badgeData = New-SecurityBadgeData $summary $result $env:GITHUB_REPOSITORY $env:GITHUB_REF $env:GITHUB_SHA $env:GITHUB_RUN_ID $env:GITHUB_RUN_ATTEMPT
+          Write-SecurityBadgeFiles $badgeData (Join-Path $resultDir.FullName 'badges')
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value ('badge_data=' + ($badgeData | ConvertTo-Json -Depth 8 -Compress))
           $lines = @('## Security collection (report-only)', '', 'Findings do not enforce a vulnerability threshold in this phase.', '', '| Severity | Findings |', '|---|---:|')
           foreach ($severity in @('CRITICAL','HIGH','MEDIUM','LOW','UNKNOWN')) {
             $lines += ('| ' + $severity + ' | ' + $summary.severityCounts.$severity + ' |')
@@ -59,9 +68,37 @@ jobs:
             dev/test-results/p3-security/*/sbom.cdx.json
             dev/test-results/p3-security/*/external-components.json
             dev/test-results/p3-security/*/artifacts.sha256
+            dev/test-results/p3-security/*/badges/*.json
             dev/test-results/p3-security/*/*.stderr.log
             dev/test-results/p3-security-preparation/*/prepared.json
             dev/test-results/p3-security-preparation/*/*.stderr.log
           if-no-files-found: warn
           include-hidden-files: false
           retention-days: 14
+  publish-count-badges:
+    name: publish-count-badges
+    needs: security-report
+    if: >-
+      needs.security-report.result == 'success' &&
+      github.event_name != 'pull_request' &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: security-count-badges
+      cancel-in-progress: false
+    steps:
+      - name: Check out trusted default-branch source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Publish count endpoints to the security-badges branch
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SECURITY_BADGE_DATA: ${{ needs.security-report.outputs.badge_data }}
+          SECURITY_BADGE_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: ./dev/security/publish-badges.ps1

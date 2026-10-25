@@ -1,8 +1,10 @@
 # HTTPS-PORTAL
 
-[![Tests (UT + integration)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml/badge.svg?event=push)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml) [![Security report](https://github.com/yamada28go/https-portal/actions/workflows/security.yml/badge.svg)](https://github.com/yamada28go/https-portal/actions/workflows/security.yml)
+[![Tests (UT + integration)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml/badge.svg?event=push)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml) [![Security report](https://github.com/yamada28go/https-portal/actions/workflows/security.yml/badge.svg)](https://github.com/yamada28go/https-portal/actions/workflows/security.yml) [![Critical findings](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fyamada28go%2Fhttps-portal%2Fsecurity-badges%2Fcritical.json&cacheSeconds=300)](https://github.com/yamada28go/https-portal/blob/security-badges/latest.json) [![High findings](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fyamada28go%2Fhttps-portal%2Fsecurity-badges%2Fhigh.json&cacheSeconds=300)](https://github.com/yamada28go/https-portal/blob/security-badges/latest.json)
 
 セキュリティ検査はreport-onlyです。緑色のバッジは脆弱性検査とSBOM収集の正常終了を示し、脆弱性がないことを意味しません。
+
+件数は既定ブランチの最新の成功検査における、パッケージごとの検出数です。クリックすると検査日時と実行元を確認できます。後続の検査が失敗した場合は前回成功時の値を維持し、初回公開までは表示されません。
 
 HTTPS-PORTALは、[Nginx](http://nginx.org)、[Let's Encrypt](https://letsencrypt.org)、および
 [Docker](https://www.docker.com)を利用した、完全自動化されたHTTPSサーバーです。
