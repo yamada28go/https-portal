@@ -57,3 +57,5 @@ build・pullを行わない入口を追加した。UTは `-UsePreparedImages -Un
 [実行手順・資材準備・制約](../../dev/docs/40-p3-security/41-execution-guide-ja.md)を参照。通信遮断下での実試験受入は別途必要。
 
 P3手順4：IP制限は -Scenario security（ip/ip-auth）で実行する。allは既存8件＋IP制限2件の計10件。[準備・実行手順](../../dev/docs/40-p3-security/43-ip-access-guide-ja.md)に従いtoolsイメージを更新する。
+
+P3手順5：TLS/証明書異常系は -Scenario tls（3件）。securityはIPを含む5件、allは13件。[準備・故意変更検知・実行手順](../../dev/docs/40-p3-security/44-tls-security-guide-ja.md)を参照。toolsの更新が必要。

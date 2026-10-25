@@ -178,3 +178,90 @@ Docker DesktopのLinux Engineへ接続できる通常のPowerShellで実行す�
 - IP制限シナリオの通常実通信受入は成功。全10シナリオの回帰実行、deny/authを故意に壊した検知、GitHub Actions上の今回変更の成功は別途未確認。JSONにGitHub run情報はないため、この結果をActions成功とは扱わない。
 
 次は全体の回帰確認・故意変更の検知証跡を補い、手順5のTLS/証明書異常系へ進める。
+
+## Actionsのpush成功確認：既存10件構成（2026-10-24）
+
+利用者提供の[run 40095349214](https://github.com/yamada28go/https-portal/actions/runs/40095349214)をブラウザーで確認した。対象commitは106e1f8e26e9466062df1dd0d8cb88a5832f5e38、push起動、全体Success。lint-and-unitは1m5s、docker-smokeは3m57s。unit/integrationのartifact計2件が生成されている。
+
+ログ閲覧・artifact取得にはサインインが必要であり、中身の全10件・cleanup照合は未実施。この記録は公開の成功表示の確認であり、後述TLS3件の受入ではない。
+
+## 手順5：TLS・証明書異常系の実装（2026-10-24）
+
+状態：実装済み・実Docker受入待ち。
+
+追加：tls-policy/tls-chain/tls-expiredとtls選択、TLSプロトコル固定・SNI省略・検証コード取得、異常証明書fixture、差し替え/reload/正常復元。更新ロックで定期renewとの競合を防ぐ。任意のTLSMutation disable-tls12は使い捨てコンテナ内のみ設定を変更し、TLS1.2正常契約の故意失敗を検証できる。通常all/securityはmutationなし。
+
+- PowerShell 7の構文成功。最初の13構成は実ComposeのValidateOnlyでvalidated/completeを確認。
+- 変更Ruby4ファイル（client/prepare/tls_contracts/switch_tls_fixture）はRuby公式Prism 2.0.0で構文エラー0。検証用parserはnpm配布のintegrityを照合し、workへ配置。製品・Gem依存は変更していない。
+- 代役DockerでTLS6実行、全13件回帰のホスト制御、baseline/mutated/restoredの各失敗、差し替え/reload失敗、空casesの拒否とcleanupを検証。これらはHTTP/TLSや証明書検証の実証ではない。
+- ホストからDocker Engineは引き続きpermission denied。Ruby 2.7/OpenSSLでの実動作、通信遮断下での完走、実際の故意変更検知・復元、今回変更のActions受入は利用者実行待ち。
+
+証跡をdev/test-results/p3-tls-harness/以下へ保存し、代役のpassed JSONを実ITの結果と混同しないよう隔離する。[44 TLS試験の実行手順](44-tls-security-guide-ja.md)にコマンドと判定を記載した。
+
+最終追加確認：更新ロック失敗・正常3件・TLSMutation故意失敗の代役制御3項目も成功。最終版はPowerShell 7/5.1、埋め込みRuby3片も構文成功。証跡：dev/test-results/p3-tls-harness/20261024T130953Z/。構文・代役検証の成功を実TLSの受入とは区別する。
+
+
+## 最新：手順5のTLS試験が実Dockerで成功（2026-10-24）
+
+利用者実行ID 20261024t131715z-427b2388のresult.jsonを照合した。Scenario=tls、Repeat=2、mode=prepared-images、tlsMutation=none、全体passed/complete。実行時刻は22:17:15〜22:21:50 JST。
+
+| 確認 | 結果 |
+|---|---|
+| 実行件数 | TLS3件×2回、全6件result/diagnostics/cleanup=passed |
+| S-T07 | 両回TLS1.2/1.3成功。TLS1.0/1.1はloopback能力対照で成功し、portalはprotocol version alertで拒否 |
+| S-T08 | 両回対象外SNI/SNIなしをunrecognized_nameで拒否 |
+| S-T02 | 両回正常200→中間欠落を検証コード20で拒否→復元200。正常時fingerprintが復元後と一致 |
+| S-T03 | 両回正常200→期限切れを検証コード10で拒否→復元200。異常leafは別fingerprint、正常復元は元と一致 |
+| 残存 | container/network/volumeの合計0 |
+
+証跡：dev/test-results/p2-integration/20261024t131715z-427b2388/。
+
+判定：手順5の通常TLS実通信受入は成功。TLSMutation disable-tls12による故意失敗・mutationなしでの復帰、全13件回帰、今回変更のGitHub Actions成功/成果物照合は未確認。実行JSONのtlsMutation=noneのため、この成功を故意変更検知の証拠とはしない。ホストのインターネット遮断もログ単独では未証明。
+
+## 次の受入作業：故意変更試験を試行（2026-10-25 日本時間）
+
+依頼に基づき、準備済み製品/toolsを指定し、Scenario tls-policy / TLSMutation disable-tls12を実際に呼び出した。
+
+- 実行ID：20261025t022637z-dfcef44a。
+- 結果：failed、stage=engine。Docker API named pipeへのpermission deniedによりdocker-versionで停止。
+- 証跡：dev/test-results/p2-integration/20261025t022637z-dfcef44a/のresult.json、docker-version.stderr.log、Compose設定ログ。
+- mutation設定を受け取ったことは記録されているが、mutationAppliedに至っていない。コンテナ起動・設定変更・TLS検証は未実施であり、故意変更検知の成功ではない。
+- build/pullを行う経路へ切り替えていない。正常復帰・全13件回帰は、故意変更検知の受入後に実施する。
+
+利用者の通常PowerShellで[44 TLS手順](44-tls-security-guide-ja.md)の故意変更コマンドを実行し、result.jsonとrun-*-tls-checkの失敗理由を照合する。期待はTLS1.2の正常接続検証でprotocol version alertを受けること。設定書換え・reload・Engineの失敗を検知成功と混同しない。
+
+## 故意変更の起動待ち不足を修正（2026-10-25）
+
+利用者実行ID 20261025t022726z-882f35c6はrun-1-mutation-tls12でexit 1。stderrはTLS mutation anchor missing。製品ログはcont-initの20-setup途中、HTTP設定の診断も未生成で失敗していた。故意変更が起動完了より先に生成設定を読んでいたため、期待するTLS1.2検証失敗には到達していない。cleanup=passed、残存なし、diagnostics=partial。この失敗は検知成功としない。
+
+修正：TLSMutationを適用する前に通常tls-policyの全項目を成功させ、その結果をtlsBeforeMutation・別prefixのログへ保存する。続けて製品の更新ロックを保持し、設定書換え→nginx -t→reload→変更後のTLS契約へ進む。変更前試験が失敗すれば書換えない。
+
+変更先はホストのdev/check_p2_integration.ps1。製品コード・tools内Rubyは変更せず、イメージ再build不要。同じ故意変更コマンドで再実行する。実Docker受入は再実行待ち。
+
+修正検証：PowerShell 7/5.1構文成功。代役プロセスで『変更前の成功→書換え→変更後の失敗』と『変更前失敗なら書換えない』の2件を確認し、cleanup成功・変更前ログの別保存も照合。証跡：dev/test-results/p3-tls-harness/startup-fix-20261025T024341Z/。これは制御順序の検証であり、実TLS検知成功は未確認。
+
+
+## 最新：TLS故意変更の検知成功（2026-10-25）
+
+利用者実行ID 20261025t024506z-8f12e242のresult.json・run-1-tls-check.stdout.logを照合した。
+
+- 変更前：tlsBeforeMutation.result=passed、S-T07/S-T08成功。
+- 適用：mutationApplied=disable-tls12。nginx設定の変更とreload後に検証へ到達。
+- 期待失敗：verified HTTPS 200の後、TLS1.2固定接続でIntegrationClient::TLSFailure / tlsv1 alert protocol version。run-1-tls-checkがexit 1。
+- 後片付け：diagnostics/cleanup=passed、container/network/volume残存なし。
+
+判定：TLS1.2無効化による退行を試験が検知した。実行自体のresult=failedは正しい負の証跡として維持する。過去のEngine拒否・anchor missing・引数貼り付け誤りとは区別する。
+
+残作業：TLSMutationなしの正常復帰を確認し、全13シナリオの回帰試験、今回変更のActions成功とartifact内容を照合する。
+
+## 最新：全13件回帰とTLS正常復帰の受入成功（2026-10-25）
+
+利用者実行ID 20261025t024745z-c4d9ac62のresult.jsonを照合した。
+
+- 実行時刻：11:47:45〜12:04:10 JST。
+- 全体：passed/complete、Scenario all、Repeat 2、mode=prepared-images、tlsMutation=none。
+- auth/ca/ip/ip-auth/local/persistence/proxy/redirect/renewal/static/tls-chain/tls-expired/tls-policyの13件が各2回、計26件成功。
+- 全件result/diagnostics/cleanup=passed。不成功・診断partialは0件。残存container/network/volume合計0。
+- tls-policyは両回S-T07/S-T08成功。直前の故意変更検知後、mutationなしの新規projectで通常契約へ正常復帰したことを確認。
+
+判定：手順5のローカル通常試験・故意変更検知・正常復帰・全体回帰の受入は成功。証跡はdev/test-results/p2-integration/20261025t024745z-c4d9ac62/。今回のTLS変更を含むGitHub Actions成功とartifactの全13件/cleanup照合は引き続き未確認。

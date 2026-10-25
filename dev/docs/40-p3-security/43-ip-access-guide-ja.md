@@ -37,7 +37,7 @@ docker run --rm --pull never --network none --entrypoint ruby https-portal-prepa
 docker run --rm --pull never --network none --entrypoint ruby https-portal-prepared-tools:p3-ip -c /opt/it/ip_contracts.rb
 ```
 
-## 2. IP制限試験を独立2回実行
+## 2. IP制限を含むsecurity試験を独立2回実行
 
 製品コードは変更していないため、手順3で成功した製品イメージIDを再利用する。toolsは新しいタグを指定する。実行開始時にIDへ固定し、以後build/pullしない。
 
@@ -50,16 +50,16 @@ docker run --rm --pull never --network none --entrypoint ruby https-portal-prepa
   -Repeat 2
 ```
 
-securityは現在ip/ip-authの2件。Repeat 2では計4件の独立実行となる。単独確認はScenario ipまたはip-authで実行できる。
+手順5追加後のsecurityはip/ip-authとTLS3件の計5件。Repeat 2では計10件となる。IPだけの確認はScenario ipまたはip-authをそれぞれ指定する。TLS追加時のtools更新は44-tls-security-guide-ja.mdも参照する。
 
-成功後に既存試験を含む全体を確認する場合は、同じ指定のScenarioをallへ変更する。allは従来8件＋ip/ip-authの計10件になり、Repeat 2では計20件。既存P2文書の8件は当時の受入記録である。
+成功後に既存試験を含む全体を確認する場合は、同じ指定のScenarioをallへ変更する。手順5追加後のallは計13件で、Repeat 2では計26件。既存P2文書の8件は当時の受入記録である。
 
 ## 3. 結果確認
 
 最後のEvidenceに表示されるdev/test-results/p2-integration/<実行ID>/を確認する。
 
 - 全体result=passed、stage=complete。
-- security/Repeat 2はrunsが4件。各result/diagnostics/cleanup=passed、remainingのcontainer/network/volumeが全て空。
+- 手順5追加後のsecurity/Repeat 2はrunsが10件（IP4件＋TLS6件）。各result/diagnostics/cleanup=passed、remainingのcontainer/network/volumeが全て空。
 - 各runのallowedIp、allowed.source_ipが一致し、denied.source_ipは異なる。
 - allowed/deniedのchecksに実際のHTTP statusが記録されている。ipの許可200/拒否403、ip-authの200/401/403、spoof-1/2/3の403を確認する。
 - 公開証明書fingerprint、使用image IDを記録する。生成fixture envは資格情報を含むため共有成果物へ含めない。

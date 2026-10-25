@@ -1,14 +1,16 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('local','never-ready','redirect','proxy','auth','ca','persistence','renewal','static','ip','ip-auth','security','all')][string]$Scenario = 'local',
+    [ValidateSet('local','never-ready','redirect','proxy','auth','ca','persistence','renewal','static','ip','ip-auth','tls-policy','tls-chain','tls-expired','tls','security','all')][string]$Scenario = 'local',
     [ValidateRange(1,10)][int]$Repeat = 1,
     [ValidateRange(1,900)][int]$StartupTimeoutSeconds = 180,
     [switch]$NoCache,
     [switch]$ValidateOnly,
     [switch]$UsePreparedImages,
     [string]$PortalImage,
-    [string]$TestImage
+    [string]$TestImage,
+    [ValidateSet('none','disable-tls12')][string]$TLSMutation = 'none'
 )
+if ($TLSMutation -ne 'none' -and $Scenario -ne 'tls-policy') { throw 'TLSMutation requires Scenario tls-policy' }
 if ($UsePreparedImages) {
     foreach ($reference in @($PortalImage, $TestImage)) {
         if ([string]::IsNullOrWhiteSpace($reference) -or $reference.StartsWith('-') -or $reference -match '[\s\x00-\x1f$#]') { throw 'UsePreparedImages requires both -PortalImage and -TestImage with local image references' }
@@ -40,6 +42,7 @@ if ($env:GITHUB_ACTIONS -eq 'true') {
         runAttempt=$env:GITHUB_RUN_ATTEMPT; expectedSha=$env:GITHUB_SHA
     }
 }
+$record.tlsMutation = $TLSMutation
 $record.mode = if ($UsePreparedImages) { 'prepared-images' } else { 'build-and-test' }
 if ($UsePreparedImages) {
     $environment.IT_PORTAL_IMAGE = $PortalImage
@@ -47,7 +50,7 @@ if ($UsePreparedImages) {
 }
 $record.requestedImages = [ordered]@{ portal=$environment.IT_PORTAL_IMAGE; tools=$environment.IT_TEST_IMAGE }
 $failure = $null
-$scenarios = if ($Scenario -eq 'all') { @('local','redirect','proxy','auth','ca','persistence','renewal','static','ip','ip-auth') } elseif ($Scenario -eq 'security') { @('ip','ip-auth') } else { @($Scenario) }
+$scenarios = if ($Scenario -eq 'all') { @('local','redirect','proxy','auth','ca','persistence','renewal','static','ip','ip-auth','tls-policy','tls-chain','tls-expired') } elseif ($Scenario -eq 'tls') { @('tls-policy','tls-chain','tls-expired') } elseif ($Scenario -eq 'security') { @('ip','ip-auth','tls-policy','tls-chain','tls-expired') } else { @($Scenario) }
 
 function Protect-LogText([string]$Text) {
     foreach ($secret in @('fixture-user:fixture-password','fixture-user:wrong-password')) {
@@ -63,11 +66,14 @@ function Set-ScenarioEnvironment([string]$Name) {
         'auth' { 'fixture-user:fixture-password@auth.test -> http://echo:8080' }
         'ip' { '[' + $environment.IT_ALLOWED_IP + ']ip.test -> http://echo:8080' }
         'ip-auth' { '[' + $environment.IT_ALLOWED_IP + ']fixture-user:fixture-password@ip-auth.test -> http://echo:8080' }
+        'tls-policy' { 'tls.test' }
+        'tls-chain' { 'tls.test' }
+        'tls-expired' { 'tls.test' }
         'ca' { 'tls.test' }
         'static' { 'static.test' }
         default { 'portal.test' }
     }
-    $script:activeHost = switch ($Name) { 'proxy' { 'proxy.test' } 'auth' { 'auth.test' } 'ip' { 'ip.test' } 'ip-auth' { 'ip-auth.test' } 'ca' { 'tls.test' } 'static' { 'static.test' } default { 'portal.test' } }
+    $script:activeHost = switch ($Name) { 'proxy' { 'proxy.test' } 'auth' { 'auth.test' } 'ip' { 'ip.test' } 'ip-auth' { 'ip-auth.test' } 'tls-policy' { 'tls.test' } 'tls-chain' { 'tls.test' } 'tls-expired' { 'tls.test' } 'ca' { 'tls.test' } 'static' { 'static.test' } default { 'portal.test' } }
     $script:envFile = Join-Path $results ('fixture-' + $Name + '.env')
     [IO.File]::WriteAllText($envFile, (($environment.Keys | Sort-Object | ForEach-Object { $_ + '=' + $environment[$_] }) -join "`n") + "`n", $utf8)
 }
@@ -149,6 +155,25 @@ function Assert-IsolatedConfig($Config) {
         foreach ($volume in $Config.services.$tester.volumes) { if ($volume.source -ne 'public') { throw 'Tester must not receive private certificate or site volumes' } }
     }
 }
+function Invoke-TLSContract([string[]]$ComposeArgs,[string]$Prefix,[string]$Phase,[string]$ScenarioName) {
+    $probe = Invoke-DockerBounded -DockerArgs ($ComposeArgs + @('run','--pull','never','--rm','--no-deps','-T','-e',('IT_PHASE=' + $Phase),'tester','ruby','/opt/it/tls_contracts.rb')) -TimeoutSeconds ($StartupTimeoutSeconds + 60) -LogName ($Prefix + '-tls-' + $Phase)
+    $summary = ($probe.stdout -split '\r?\n' | Where-Object { $_.StartsWith('{') } | Select-Object -Last 1) | ConvertFrom-Json
+    if ($summary.result -ne 'passed' -or $summary.scenario -ne $ScenarioName -or $summary.phase -ne $Phase -or !$summary.cases.Count) { throw 'Invalid TLS contract evidence' }
+    $summary
+}
+function Hold-CertificateRenewal([string[]]$ComposeArgs,[string]$Prefix) {
+    # Keep the product's existing advisory lock while abnormal certs are served.
+    # The detached holder dies with this disposable portal container.
+    $hold = 'lock=File.open("/tmp/https-portal.lock",File::CREAT); lock.flock(File::LOCK_EX); File.write("/tmp/it-cert-lock.ready","locked"); sleep ' + (3 * $StartupTimeoutSeconds + 120)
+    Invoke-DockerBounded -DockerArgs ($ComposeArgs + @('exec','-d','-T','portal','ruby','-e',$hold)) -TimeoutSeconds 20 -LogName ($Prefix + '-renew-lock-start') | Out-Null
+    $wait = 'deadline=Process.clock_gettime(Process::CLOCK_MONOTONIC)+10; until File.exist?("/tmp/it-cert-lock.ready"); raise "Renewal lock timeout" if Process.clock_gettime(Process::CLOCK_MONOTONIC)>=deadline; sleep 0.1; end; puts "renewal locked"'
+    Invoke-DockerBounded -DockerArgs ($ComposeArgs + @('exec','-T','portal','ruby','-e',$wait)) -TimeoutSeconds 15 -LogName ($Prefix + '-renew-lock-ready') | Out-Null
+}
+function Set-TLSFixture([string[]]$ComposeArgs,[string]$Prefix,[string]$Variant) {
+    Invoke-DockerBounded -DockerArgs ($ComposeArgs + @('run','--pull','never','--rm','--no-deps','-T','-e',('IT_TLS_VARIANT=' + $Variant),'prepare','ruby','/opt/it/switch_tls_fixture.rb')) -TimeoutSeconds 30 -LogName ($Prefix + '-switch-' + $Variant) | Out-Null
+    Invoke-DockerBounded -DockerArgs ($ComposeArgs + @('exec','-T','portal','nginx','-t')) -TimeoutSeconds 20 -LogName ($Prefix + '-nginx-test-' + $Variant) | Out-Null
+    Invoke-DockerBounded -DockerArgs ($ComposeArgs + @('exec','-T','portal','nginx','-s','reload')) -TimeoutSeconds 20 -LogName ($Prefix + '-reload-' + $Variant) | Out-Null
+}
 function Find-Resources([string]$Project,[string]$Prefix) {
     $found = [ordered]@{}
     foreach ($kind in @('container','network','volume')) {
@@ -228,7 +253,33 @@ try {
                 if ($net.stdout.Trim() -ne 'true') { throw 'Created network is not internal' }
                 $testArgs = @('run','--pull','never','--rm','--no-deps','-T')
                 if ($activeScenario -eq 'never-ready') { $testArgs += @('-e','IT_EXPECTED_BODY=__intentional_readiness_failure__') }
-                if ($activeScenario -in @('ip','ip-auth')) {
+                if ($activeScenario -in @('tls-policy','tls-chain','tls-expired')) {
+                    $current.tls = @()
+                    if ($activeScenario -eq 'tls-policy') {
+                        if ($TLSMutation -eq 'disable-tls12') {
+                            # Startup writes nginx.conf asynchronously after compose up.
+                            # Prove the unmodified policy first, then acquire the same
+                            # lock as setup/reconfig/renew before touching generated config.
+                            $current.tlsBeforeMutation = Invoke-TLSContract $args ($prefix + '-before-mutation') 'check' $activeScenario
+                            Hold-CertificateRenewal $args $prefix
+                            $mutate = 'path="/etc/nginx/nginx.conf"; text=File.read(path); old="ssl_protocols TLSv1.2 TLSv1.3;"; raise "TLS mutation anchor missing" unless text.include?(old); File.write(path,text.sub(old,"ssl_protocols TLSv1.3;")); puts "mutation-tls12"'
+                            Invoke-DockerBounded -DockerArgs ($args + @('exec','-T','portal','ruby','-e',$mutate)) -TimeoutSeconds 20 -LogName ($prefix + '-mutation-tls12') | Out-Null
+                            Invoke-DockerBounded -DockerArgs ($args + @('exec','-T','portal','nginx','-t')) -TimeoutSeconds 20 -LogName ($prefix + '-mutation-nginx-test') | Out-Null
+                            Invoke-DockerBounded -DockerArgs ($args + @('exec','-T','portal','nginx','-s','reload')) -TimeoutSeconds 20 -LogName ($prefix + '-mutation-reload') | Out-Null
+                            $current.mutationApplied = $TLSMutation
+                        }
+                        $current.tls += Invoke-TLSContract $args $prefix 'check' $activeScenario
+                        if ($TLSMutation -ne 'none') { throw 'TLS mutation unexpectedly survived; this is not successful detection evidence' }
+                    } else {
+                        $current.tls += Invoke-TLSContract $args $prefix 'baseline' $activeScenario
+                        Hold-CertificateRenewal $args $prefix
+                        $variant = if ($activeScenario -eq 'tls-chain') { 'missing' } else { 'expired' }
+                        Set-TLSFixture $args $prefix $variant
+                        $current.tls += Invoke-TLSContract $args $prefix 'mutated' $activeScenario
+                        Set-TLSFixture $args $prefix 'valid'
+                        $current.tls += Invoke-TLSContract $args $prefix 'restored' $activeScenario
+                    }
+                } elseif ($activeScenario -in @('ip','ip-auth')) {
                     $roleEnv = @('-e',('IT_SCENARIO=' + $activeScenario),'-e',('IT_ALLOWED_IP=' + $environment.IT_ALLOWED_IP))
                     $allowed = Invoke-DockerBounded -DockerArgs ($args + @('exec','-T') + $roleEnv + @('-e','IT_ROLE=allowed','tester-allowed','ruby','/opt/it/ip_contracts.rb')) -TimeoutSeconds ($StartupTimeoutSeconds + 30) -LogName ($prefix + '-allowed-probe')
                     $allowedResult = ($allowed.stdout -split '\r?\n' | Where-Object { $_.StartsWith('{') } | Select-Object -Last 1) | ConvertFrom-Json
@@ -249,7 +300,9 @@ try {
                 } else {
                     $testArgs += @('tester','ruby','/opt/it/contracts.rb')
                 }
-                $probe = Invoke-DockerBounded -DockerArgs ($args + $testArgs) -TimeoutSeconds ($StartupTimeoutSeconds + 30) -LogName ($prefix + '-probe')
+                if ($activeScenario -notin @('tls-policy','tls-chain','tls-expired')) {
+                    $probe = Invoke-DockerBounded -DockerArgs ($args + $testArgs) -TimeoutSeconds ($StartupTimeoutSeconds + 30) -LogName ($prefix + '-probe')
+                }
                 if ($activeScenario -in @('ip','ip-auth')) {
                     $deniedResult = ($probe.stdout -split '\r?\n' | Where-Object { $_.StartsWith('{') } | Select-Object -Last 1) | ConvertFrom-Json
                     if ($deniedResult.result -ne 'passed' -or $deniedResult.role -ne 'denied' -or !$deniedResult.source_ip -or $deniedResult.source_ip -eq $environment.IT_ALLOWED_IP) { throw 'Invalid denied tester evidence' }

@@ -40,14 +40,14 @@ if scenario == 'static'
   File.write(File.join(dir, 'nested/page.txt'), "HTTPS-PORTAL integration nested page\n")
 end
 
-def make_certificate(name, key, issuer = nil, issuer_key = nil, ca: false, pathlen: nil, days: 90)
+def make_certificate(name, key, issuer = nil, issuer_key = nil, ca: false, pathlen: nil, days: 90, not_before: Time.now - 60)
   cert = OpenSSL::X509::Certificate.new
   cert.version = 2
   cert.serial = SecureRandom.random_number(2**120) + 1
   cert.subject = OpenSSL::X509::Name.parse("/CN=#{name}")
   cert.issuer = issuer ? issuer.subject : cert.subject
   cert.public_key = key.public_key
-  cert.not_before = Time.now - 60
+  cert.not_before = not_before
   cert.not_after = Time.now + days * 86400
   factory = OpenSSL::X509::ExtensionFactory.new
   factory.subject_certificate = cert
@@ -65,7 +65,7 @@ def make_certificate(name, key, issuer = nil, issuer_key = nil, ca: false, pathl
   cert
 end
 
-if scenario == 'ca'
+if %w[ca tls-policy tls-chain tls-expired].include?(scenario)
   root_key = OpenSSL::PKey::RSA.new(2048)
   root = make_certificate('Integration Root CA', root_key, ca: true, pathlen: 1, days: 730)
   intermediate_key = OpenSSL::PKey::RSA.new(2048)
@@ -84,8 +84,16 @@ if scenario == 'ca'
   File.chmod(0600, File.join(dir, 'domain.key'))
   File.write(File.join(public_dir, 'root-ca.crt'), root.to_pem)
   File.write(File.join(public_dir, 'wrong-ca.crt'), wrong_root.to_pem)
+  expired = make_certificate('tls.test', leaf_key, intermediate, intermediate_key,
+                             days: -1, not_before: Time.now - 2 * 86400)
+  variants = '/fixture/certificates/.tls-fixtures'
+  FileUtils.mkdir_p(variants)
+  File.write(File.join(variants, 'valid.crt'), leaf.to_pem + intermediate.to_pem)
+  File.write(File.join(variants, 'missing.crt'), leaf.to_pem)
+  File.write(File.join(variants, 'expired.crt'), expired.to_pem + intermediate.to_pem)
   File.write(File.join(public_dir, 'expected.json'), JSON.generate(
     leaf_sha256: Digest::SHA256.hexdigest(leaf.to_der),
+    expired_sha256: Digest::SHA256.hexdigest(expired.to_der),
     intermediate_sha256: Digest::SHA256.hexdigest(intermediate.to_der)
   ))
 end

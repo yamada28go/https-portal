@@ -65,3 +65,11 @@ Testsにdocker-smokeを追加済み・GitHub受入待ち。[36 Actions接続・�
 手順4のIP制限試験を実装済み・実Docker受入待ち。[43 IP制限の実行手順](40-p3-security/43-ip-access-guide-ja.md)を参照。新toolsイメージでsecurity（ip/ip-auth）を実行する。allは10件へ拡張。
 
 手順4の最新結果：利用者実行ID 20261024t123747z-c292cf3eでIP制限2件×2回の全4件が実Dockerで成功。診断/cleanup・残存なしも確認。全体回帰・故意変更検知・Actions受入は別途追跡。
+
+手順5のTLS/証明書異常系は実装済み・実Docker受入待ち。[44 TLS試験の実行手順](40-p3-security/44-tls-security-guide-ja.md)を参照。tlsは3件、securityは5件、allは13件。
+
+手順5の最新受入：20261024t131715z-427b2388でTLS3件×2回の全6件が実Dockerで成功。正常復元・診断/cleanup・残存なしを確認。故意変更検知と全13件回帰・今回変更のActions受入は別途追跡。
+
+TLS故意変更検知：20261025t024506z-8f12e242で変更前成功→TLS1.2無効化→protocol version alertによる期待失敗を確認。診断/cleanup成功・残存なし。次はmutationなしの正常復帰と全13件回帰。
+
+手順5のローカル受入完了：故意変更検知に続き、20261025t024745z-c4d9ac62で全13件×2回（26件）成功。TLS正常復帰・全件診断/cleanup成功・残存なし。次はTLS変更のcommit/push後、Actionsとartifactの全13件/cleanupを確認。

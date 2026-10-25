@@ -8,6 +8,13 @@ require 'timeout'
 module IntegrationClient
   class NotReady < StandardError; end
   class ContractFailure < StandardError; end
+  class TLSFailure < OpenSSL::SSL::SSLError
+    attr_reader :verification_code
+    def initialize(message, verification_code)
+      super(message)
+      @verification_code = verification_code
+    end
+  end
   TRANSIENT = [NotReady, SocketError, SystemCallError, IOError, OpenSSL::SSL::SSLError, Timeout::Error, Net::HTTPBadResponse].freeze
 
   def self.assert(condition, message)
@@ -22,7 +29,7 @@ module IntegrationClient
       @root = root
     end
 
-    def tls(store: nil, check_host: @host, sni: @host)
+    def tls(store: nil, check_host: @host, sni: @host, version: nil, legacy: false)
       tcp = nil
       ssl = nil
       Timeout.timeout(10) do
@@ -32,11 +39,22 @@ module IntegrationClient
           context = OpenSSL::SSL::SSLContext.new
           context.verify_mode = store ? OpenSSL::SSL::VERIFY_PEER : OpenSSL::SSL::VERIFY_NONE
           context.cert_store = store if store
+          if version
+            context.min_version = version
+            context.max_version = version
+          end
+          if legacy
+            # Dedicated protocol-rejection probe only; certificate checks stay on.
+            context.security_level = 0
+            context.ciphers = 'ALL:@SECLEVEL=0'
+          end
           ssl = OpenSSL::SSL::SSLSocket.new(tcp, context)
-          ssl.hostname = sni
+          ssl.hostname = sni if sni
           ssl.connect
           ssl.post_connection_check(check_host) if store
-          { cert: ssl.peer_cert, chain: ssl.peer_cert_chain || [] }
+          { cert: ssl.peer_cert, chain: ssl.peer_cert_chain || [], version: ssl.ssl_version }
+        rescue OpenSSL::SSL::SSLError => error
+          raise TLSFailure.new(error.message, ssl ? ssl.verify_result : nil)
         ensure
           begin
             ssl.close if ssl
