@@ -16,19 +16,32 @@ concurrency:
 
 jobs:
   security-report:
-    name: security-report
-    runs-on: ubuntu-24.04
+    name: security-report (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    env:
+      CI_EXPECTED_ARCH: ${{ matrix.arch }}
     timeout-minutes: 45
-    outputs:
-      badge_data: ${{ steps.collect.outputs.badge_data }}
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
+      - name: Verify native runner and Docker architecture
+        shell: pwsh
+        run: |
+          ./dev/check_ci_platform_contracts.ps1
+          ./dev/check_ci_platform.ps1 -ExpectedArchitecture $env:CI_EXPECTED_ARCH
+
       - name: Prepare image and DB, then collect offline security evidence
-        id: collect
         shell: pwsh
         timeout-minutes: 40
         run: |
@@ -36,8 +49,8 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $false
           ./dev/security/check-contracts.ps1
           ./dev/security/check-badges.ps1
-          $image = 'https-portal-security:' + $env:GITHUB_SHA
-          & docker build --progress=plain --tag $image .
+          $image = 'https-portal-security:' + $env:GITHUB_SHA + '-' + $env:CI_EXPECTED_ARCH
+          & docker build --progress=plain --platform ('linux/' + $env:CI_EXPECTED_ARCH) --tag $image .
           if ($LASTEXITCODE -ne 0) { throw 'Product image build failed' }
           $prepared = ./dev/prepare_p3_security.ps1
           ./dev/check_p3_security.ps1 -PortalImage $image -PreparationFile $prepared.PreparationFile
@@ -47,8 +60,7 @@ jobs:
           $result = Get-Content -Raw -LiteralPath (Join-Path $resultDir.FullName 'result.json') | ConvertFrom-Json
           $badgeData = New-SecurityBadgeData $summary $result $env:GITHUB_REPOSITORY $env:GITHUB_REF $env:GITHUB_SHA $env:GITHUB_RUN_ID $env:GITHUB_RUN_ATTEMPT
           Write-SecurityBadgeFiles $badgeData (Join-Path $resultDir.FullName 'badges')
-          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value ('badge_data=' + ($badgeData | ConvertTo-Json -Depth 8 -Compress))
-          $lines = @('## Security collection (report-only)', '', 'Findings do not enforce a vulnerability threshold in this phase.', '', '| Severity | Findings |', '|---|---:|')
+          $lines = @(('## Security collection (' + $env:CI_EXPECTED_ARCH + ', report-only)'), '', 'Findings do not enforce a vulnerability threshold in this phase.', '', '| Severity | Findings |', '|---|---:|')
           foreach ($severity in @('CRITICAL','HIGH','MEDIUM','LOW','UNKNOWN')) {
             $lines += ('| ' + $severity + ' | ' + $summary.severityCounts.$severity + ' |')
           }
@@ -60,7 +72,7 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         timeout-minutes: 3
         with:
-          name: security-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          name: security-evidence-${{ matrix.arch }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             dev/test-results/p3-security/*/result.json
             dev/test-results/p3-security/*/summary.json
@@ -87,6 +99,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: write
+      actions: read
     concurrency:
       group: security-count-badges
       cancel-in-progress: false
@@ -96,9 +109,20 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Download the amd64 evidence from this run
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: security-evidence-amd64-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/security-badge-evidence
+
       - name: Publish count endpoints to the security-badges branch
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          SECURITY_BADGE_DATA: ${{ needs.security-report.outputs.badge_data }}
-        run: ./dev/security/publish-badges.ps1
+          SECURITY_BADGE_EVIDENCE: ${{ runner.temp }}/security-badge-evidence
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $files = @(Get-ChildItem -LiteralPath $env:SECURITY_BADGE_EVIDENCE -Filter latest.json -File -Recurse)
+          if ($files.Count -ne 1) { throw 'Exactly one amd64 badge payload is required' }
+          $env:SECURITY_BADGE_DATA = Get-Content -LiteralPath $files[0].FullName -Raw
+          ./dev/security/publish-badges.ps1

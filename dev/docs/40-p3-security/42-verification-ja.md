@@ -429,3 +429,18 @@ Linux用の契約では実Unix modeを設定し、Other非公開・archive group
 
 検証：26件成功。作業ブランチ公開、公開元branch変更後の既定ブランチ更新、実行branch不一致の拒否、生成データbranchの拒否を追加。PowerShell 7/5.1構文とactionlint成功。remoteへはまだ反映していない。修正commit/push後、security-reportとpublish-count-badges成功、rawの3 JSON、ShieldsとREADMEの実件数表示を受入する。単なるRe-runでは古い公開条件のままになる。
 証跡：dev/test-results/p3-security-harness/count-badge-branch-fix-20261025T090941Z/。
+
+## amd64／arm64のネイティブActions構成（2026-10-25）
+
+利用者の両CPU実行要求に対し、既存はubuntu-24.04のamd64だけであることを確認。Testsのlint-and-unit/docker-smoke、Security reportのsecurity-reportをamd64=ubuntu-24.04、arm64=ubuntu-24.04-armのmatrixへ拡張した。各matrixはfail-fast:false、成果物名はCPU別とし、全13シナリオIT・製品build・脆弱性検査・SBOM収集を各CPUで実施する。
+
+dev/ci-architecture.ps1とplatform事前確認を追加。Runner OS CPU/プロセスCPU/RUNNER_ARCH/Docker Engineが一致することを確認し、UT/tools/製品/scannerのimage inspectでもCI_EXPECTED_ARCHへ照合する。通常ローカル実行はCI_EXPECTED_ARCHなしなら従来どおり。本体Dockerfile・fs_overlay・製品バージョンは変更していない。
+
+固定Ruby 2.7.2/Trivy 0.76.1とNginx 1.30.2の公式Docker Hub manifestのcontent SHA-256を照合し、linux/amd64とlinux/arm64対応を確認。Arm64 runnerにPowerShellとDockerがあることもGitHubの公式runner image一覧で確認した。manifest確認を製品ARM実行の成功とは扱わない。
+
+公開Critical/Highバッジはamd64基準と明記し、architectureをmetadataとラベルへ追加。ARMの件数/SBOMは専用成果物とサマリーへ保存する。matrixの共有outputは使わず、両CPU成功後に公式download-artifact v8（SHA 9000827ccba6bdab643e8b6fd33ac0654aef8333）で同run/attemptのamd64成果物だけを取得する。arm64データからの公開バッジ更新を拒否。公開ジョブのactions:readを追加したがPRは公開しない。branch固定名や移行時の設定変更は不要。
+
+検証：CPU判定10件、バッジ29件、既存セキュリティ契約35件成功。PowerShell 7/5.1構文、両workflowのactionlint成功。ネイティブamd64/arm64 Actions・実build/全UT/IT/scanの受入はcommit/push後に行う。32bit arm/v7は今回対象外。
+
+[47 ネイティブActionsの受入手順](47-native-multiarch-actions-ja.md)を参照。両CPU6検査ジョブと、CPU別成果物6件、push時のpublish-count-badgesを確認する。repositoryの必須チェック・保護ルールは変更していない。
+証跡：dev/test-results/p3-security-harness/native-multiarch-20261025T093801Z/。

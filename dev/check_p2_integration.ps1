@@ -18,6 +18,7 @@ if ($UsePreparedImages) {
     if ($NoCache) { throw 'NoCache cannot be used with UsePreparedImages' }
 } elseif ($PSBoundParameters.ContainsKey('PortalImage') -or $PSBoundParameters.ContainsKey('TestImage')) { throw 'Image references require UsePreparedImages' }
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'ci-architecture.ps1')
 $repo = Split-Path $PSScriptRoot
 $runId = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ').ToLowerInvariant() + '-' + [Guid]::NewGuid().ToString('N').Substring(0,8)
 $results = Join-Path $PSScriptRoot ('test-results/p2-integration/' + $runId)
@@ -215,6 +216,7 @@ try {
             $imageInfo = Invoke-DockerBounded -DockerArgs @('image','inspect','--format','{"Id":{{json .Id}},"Os":{{json .Os}},"Architecture":{{json .Architecture}}}',$environment[$image]) -LogName ('image-' + $image)
             $details = $imageInfo.stdout | ConvertFrom-Json
             if ($details.Id -notmatch '^sha256:[0-9a-f]{64}$' -or $details.Os -ne 'linux') { throw 'Expected a local Linux image with a valid image ID' }
+            Assert-CIImageArchitecture $details.Architecture $image
             $record[$image] = $details.Id
             $record.imagePlatforms[$image] = $details.Os + '/' + $details.Architecture
             # Pin all subsequent Compose calls, even if a supplied tag is moved.

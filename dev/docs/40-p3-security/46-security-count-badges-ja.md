@@ -4,9 +4,9 @@
 
 ## 表示する値
 
-日英READMEにCritical／Highの件数バッジを追加した。値はこのリポジトリで最後に公開された成功した製品検査から取得する。ブランチごとに別の件数を表示する方式ではなく、対象ブランチ・commitをlatest.jsonで確認する。同じCVEが複数パッケージで検出された場合は複数レコードとなる。修正待ちチケット数・異なるCVE数・安全性の合否ではない。
+日英READMEにCritical／Highの件数バッジを追加した。値はこのリポジトリで最後に公開された成功した製品検査から取得する。ブランチごとに別の件数を表示する方式ではなく、対象ブランチ・commitをlatest.jsonで確認する。公開バッジはamd64の件数を使用する。同じCVEが複数パッケージで検出された場合は複数レコードとなる。修正待ちチケット数・異なるCVE数・安全性の合否ではない。
 
-Criticalが1件以上なら赤、Highが1件以上なら橙、0件なら緑。0件でも全コンポーネントの網羅や安全を保証しない。既存のSecurity report状態バッジと併せて見る。
+Criticalが1件以上なら赤、Highが1件以上なら橙、0件なら緑。amd64／arm64試験の導入後、公開件数はamd64基準と明記し、arm64の件数はCPU別成果物で確認する。0件でも全コンポーネントの網羅や安全を保証しない。既存のSecurity report状態バッジと併せて見る。
 
 クリック先latest.jsonには検査日時、対象commit、Docker/config ID、元のActions run URL、件数を保存する。後続の検査が失敗した場合は最後の成功値を残す。日時とSecurity report状態を確認し、古い値を最新の安全性判定として使わない。
 
@@ -18,7 +18,7 @@ Criticalが1件以上なら赤、Highが1件以上なら橙、0件なら緑。0�
 4. 初回は3ファイルだけの独立したroot commitを作る。既存の専用ブランチに無関係なファイルがある場合は停止し、上書きしない。更新は通常のfast-forwardでforce-pushしない。
 5. READMEはShields.io endpoint badgeからraw.githubusercontent.comのJSONを参照する。表示はキャッシュにより遅れる場合がある。
 
-GITHUB_TOKENだけを使用し、追加Secrets・Pages設定は不要。トップレベルのcontents:readは維持し、公開ジョブだけcontents:write。公開ジョブのcheckoutは既存の固定SHAとpersist-credentials:falseを使う。実行元はpush/手動/日次のsource branchに限定し、PRの公開ジョブは起動しない。PR由来のプログラムやartifactを書込み権限で実行しない。件数をjob outputとして渡し、別ジョブで検証して公開する。
+GITHUB_TOKENだけを使用し、追加Secrets・Pages設定は不要。トップレベルのcontents:readは維持し、公開ジョブだけcontents:write。公開ジョブのcheckoutは既存の固定SHAとpersist-credentials:falseを使う。実行元はpush/手動/日次のsource branchに限定し、PRの公開ジョブは起動しない。PR由来のプログラムやartifactを書込み権限で実行しない。両CPUの検査成功後、同じrun/attemptのamd64成果物を公式download-artifactで取得し、別ジョブで検証して公開する。matrixの共通job outputは使用しない。
 
 公開処理は専用concurrencyで直列化し、開始時とref更新直前に実行元ブランチHEADが検査commitと一致することを確認する。実行元HEADが進んだ実行や公開済み/古いrunはskipする。公開失敗はジョブ失敗として扱い、成功扱いにせず、元の検査evidenceは保存する。
 
@@ -47,3 +47,5 @@ GITHUB_TOKENだけを使用し、追加Secrets・Pages設定は不要。トッ�
 一次資料：[Shields endpoint](https://shields.io/badges/endpoint-badge)、[GitHub Git commits API](https://docs.github.com/en/rest/git/commits#create-a-commit)、[GitHub Git trees API](https://docs.github.com/en/rest/git/trees#create-a-tree)。
 
 初期設計の既定ブランチ限定条件により、work/yamada/add-utで成功しても公開がskipされ、READMEがresource not foundになることを実画面で確認した。表示対象を固定する案は採用せず、実行元を自動取得する上記方式へ修正した。
+
+両CPU対応の詳細・CPU別成果物・バッジのamd64基準は[47 ネイティブActions](47-native-multiarch-actions-ja.md)を参照。現在のバッジ検証は29件。

@@ -85,3 +85,5 @@ TLS変更のActions確認：run 40163898918 / commit 2fe7819でlint-and-unit・d
 [46 Critical／High件数バッジ](40-p3-security/46-security-count-badges-ja.md)を追加。既定ブランチの成功検査だけ専用security-badgesブランチへ集計値を公開する実装を追加。PR/作業ブランチはartifactのみで公開しない。実公開の受入は変更反映後のActions待ち。
 
 件数バッジ公開条件を修正：ブランチ名の明示設定は不要。成功したbranch実行のGITHUB_REF_NAMEを自動取得し、マージ後も継続更新する。PR/tag/生成データbranchは公開しない。READMEはリポジトリの最後に公開した成功検査を表示し、対象branchはクリック先で確認する。26件検証・構文/actionlint成功、remote表示は修正push後に受入待ち。
+
+[47 amd64／arm64のネイティブActions実行](40-p3-security/47-native-multiarch-actions-ja.md)を追加。UT・全13件IT・脆弱性/SBOMを各CPUで実行し、成果物名を分離。公開件数バッジはamd64基準と明記。CPU判定・構文等の実装検証は成功、両CPUの実Actions受入はpush後。

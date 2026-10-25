@@ -1,3 +1,4 @@
+. (Join-Path (Split-Path $PSScriptRoot) 'ci-architecture.ps1')
 # Shared primitives; no Docker calls are made merely by dot-sourcing this file.
 function Write-SecurityJson([string]$Path, $Value) {
     [IO.File]::WriteAllText($Path, ($Value | ConvertTo-Json -Depth 80), [Text.UTF8Encoding]::new($false))
@@ -66,6 +67,7 @@ function Get-SecurityImage([string]$Reference,[string]$LogName) {
     $out = Invoke-SecurityDocker -DockerArgs @('image','inspect','--format','{"Id":{{json .Id}},"Os":{{json .Os}},"Architecture":{{json .Architecture}},"RepoDigests":{{json .RepoDigests}}}',$Reference) -LogName $LogName
     $image = $out.stdout | ConvertFrom-Json
     if ($image.Id -notmatch '^sha256:[0-9a-f]{64}$' -or $image.Os -ne 'linux') { throw 'A local Linux image with a valid ID is required' }
+    Assert-CIImageArchitecture $image.Architecture 'security image'
     $image
 }
 function Assert-SecurityDatabaseFresh($Metadata,[int]$MaxAgeHours=48,[DateTimeOffset]$Now=[DateTimeOffset]::UtcNow,[int]$SchemaVersion=2) {

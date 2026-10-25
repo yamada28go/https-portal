@@ -5,7 +5,7 @@ function Reject([string]$Name,[scriptblock]$Action){$failed=$false;try{& $Action
 function Clone($Value){$Value | ConvertTo-Json -Depth 12 -Compress | ConvertFrom-Json}
 $id='sha256:'+('a'*64);$config='sha256:'+('b'*64);$commit='c'*40
 $summary=[pscustomobject]@{mode='report-only';thresholdEnabled=$false;imageId=$id;scanImageId=$config;severityCounts=[pscustomobject]@{CRITICAL=12;HIGH=135}}
-$result=[pscustomobject]@{result='collected';stage='complete';cleanup='passed';imageId=$id;scanImageId=$config;reportImageId=$config;finishedUtc='2026-10-25T07:17:34Z';summary=@{severityCounts=@{CRITICAL=12;HIGH=135}}}
+$result=[pscustomobject]@{result='collected';stage='complete';cleanup='passed';imageId=$id;scanImageId=$config;reportImageId=$config;imagePlatform='linux/amd64';finishedUtc='2026-10-25T07:17:34Z';summary=@{severityCounts=@{CRITICAL=12;HIGH=135}}}
 $data=New-SecurityBadgeData $summary $result 'owner/repository' 'refs/heads/master' $commit '100' '1'
 $files=Get-SecurityBadgeFiles $data
 $critical=$files['critical.json']|ConvertFrom-Json;$high=$files['high.json']|ConvertFrom-Json
@@ -22,6 +22,14 @@ $bad=Clone $summary;$bad.scanImageId='sha256:'+('d'*64);Reject 'Summary image mi
 $bad=Clone $summary;$bad.severityCounts.HIGH=1;Reject 'Summary count mismatch' {New-SecurityBadgeData $bad $result 'owner/repository' 'refs/heads/master' $commit '100' '1'}
 $bad=Clone $data;$bad|Add-Member -NotePropertyName ImageConfig -NotePropertyValue @{Env=@('PRIVATE=do-not-publish')};Reject 'Unapproved public metadata refused' {Get-SecurityBadgeFiles $bad}
 $bad=Clone $data;$bad.runUrl='https://unrelated.example/run';Reject 'Unrelated source URL refused' {Get-SecurityBadgeFiles $bad}
+$legacy=Clone $data;$legacy.PSObject.Properties.Remove('architecture');Assert-SecurityBadgeData $legacy
+$checks+='Published legacy metadata remains readable: passed'
+$armResult=Clone $result;$armResult.imagePlatform='linux/arm64'
+$armData=New-SecurityBadgeData $summary $armResult 'owner/repository' 'refs/heads/master' $commit '100' '1'
+$armFiles=Get-SecurityBadgeFiles $armData
+if(($armFiles['critical.json']|ConvertFrom-Json).label -cne 'Critical (arm64)'){throw 'ARM artifact lost its architecture'}
+$checks+='ARM counts identify their own architecture: passed'
+Reject 'ARM scan cannot overwrite amd64 badge' {Publish-SecurityBadgeData $armData 'owner/repository' 'master' $commit}
 $pr=New-SecurityBadgeData $summary $result 'owner/repository' 'refs/pull/1/merge' $commit '100' '1'
 $checks+='PR can generate artifacts without publication: passed'
 $script:expectedCommit=$commit

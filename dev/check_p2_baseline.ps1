@@ -9,6 +9,7 @@ if ($UsePreparedImages) {
     if ($NoCache) { throw 'NoCache cannot be used with UsePreparedImages' }
 } elseif ($PSBoundParameters.ContainsKey('UnitImage')) { throw 'UnitImage requires UsePreparedImages' }
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'ci-architecture.ps1')
 $repo = Split-Path $PSScriptRoot
 $runId = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ') + '-' + [Guid]::NewGuid().ToString('N').Substring(0,8)
 $results = Join-Path $PSScriptRoot ('test-results/p2-baseline/' + $runId)
@@ -57,6 +58,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Local unit image is unavailable; prepare or load it before testing. No image will be pulled.' }
     $imageInfo = ($imageJson | Out-String) | ConvertFrom-Json
     if ($imageInfo.Id -notmatch '^sha256:[0-9a-f]{64}$' -or $imageInfo.Os -ne 'linux') { throw 'Expected a local Linux image with a valid image ID' }
+    Assert-CIImageArchitecture $imageInfo.Architecture 'unit image'
     $hostRecord.imageId = $imageInfo.Id
     $hostRecord.imagePlatform = $imageInfo.Os + '/' + $imageInfo.Architecture
     $hostRecord.stage = 'offline-test'
