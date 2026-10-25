@@ -1,5 +1,6 @@
 # Stdlib-only checks for the integration harness, run while building both CPUs.
 require_relative 'client'
+require 'stringio'
 
 def check(name)
   yield
@@ -92,11 +93,18 @@ end
 
 class HTTPFixture
   attr_accessor :use_ssl, :verify_mode, :cert_store, :open_timeout, :read_timeout, :write_timeout, :max_retries
-  attr_reader :sent
+  attr_reader :sent, :calls
+  def initialize(outcomes = [])
+    @outcomes = outcomes
+    @calls = 0
+  end
   def request(req)
     assert(Thread.list.length == 1)
     @sent = req
-    :fixture_response
+    @calls += 1
+    outcome = @outcomes.shift || :fixture_response
+    raise outcome if outcome.is_a?(Exception)
+    outcome
   end
 end
 original_new = Net::HTTP.method(:new)
@@ -106,12 +114,63 @@ Net::HTTP.define_singleton_method(:new) do |host, port, proxy|
   http
 end
 begin
-  check('HTTP uses native bounds, verified TLS and no automatic retry') do
+  check('HTTP uses native bounds, verified TLS and no Net::HTTP internal retry') do
     client = IntegrationClient::Client.new('proxy.test')
     assert(client.request('/fixture?x=1', headers: { 'X-Fixture' => 'yes' }) == :fixture_response)
     assert(http.use_ssl && http.verify_mode == OpenSSL::SSL::VERIFY_PEER)
     assert([http.open_timeout, http.read_timeout, http.write_timeout] == [5, 5, 5])
     assert(http.max_retries == 0 && http.sent.path == '/fixture?x=1' && http.sent['X-Fixture'] == 'yes')
+  end
+  previous_stderr = $stderr
+  warnings = StringIO.new
+  $stderr = warnings
+  begin
+    check('connection timeout retries with visible evidence') do
+      http = HTTPFixture.new([Net::OpenTimeout.new('fixture connect timeout')])
+      client = IntegrationClient::Client.new('proxy.test')
+      assert(client.request == :fixture_response && http.calls == 2)
+      assert(warnings.string.include?('host=proxy.test attempt=1/3'))
+    end
+    check('persistent connection timeout fails after three attempts') do
+      http = HTTPFixture.new(Array.new(3) { Net::OpenTimeout.new('fixture connect timeout') })
+      client = IntegrationClient::Client.new('proxy.test')
+      begin
+        client.request
+        raise 'Persistent connection timeout was swallowed'
+      rescue Net::OpenTimeout
+        assert(http.calls == 3 && warnings.string.include?('attempt=3/3'))
+      end
+    end
+    check('read timeout is not retried') do
+      http = HTTPFixture.new([Net::ReadTimeout.new('fixture read timeout')])
+      begin
+        IntegrationClient::Client.new('proxy.test').request
+        raise 'Read timeout was swallowed'
+      rescue Net::ReadTimeout
+        assert(http.calls == 1)
+      end
+    end
+    check('certificate error is not retried') do
+      http = HTTPFixture.new([OpenSSL::SSL::SSLError.new('fixture certificate rejected')])
+      begin
+        IntegrationClient::Client.new('proxy.test').request
+        raise 'Certificate error was swallowed'
+      rescue OpenSSL::SSL::SSLError
+        assert(http.calls == 1)
+      end
+    end
+    check('unexpected HTTP status fails the contract without retry') do
+      http = HTTPFixture.new([Struct.new(:code).new('200')])
+      begin
+        reply = IntegrationClient::Client.new('proxy.test').request
+        IntegrationClient.assert(reply.code == '403', 'fixture expected 403')
+        raise 'Contract failure was swallowed'
+      rescue IntegrationClient::ContractFailure
+        assert(http.calls == 1)
+      end
+    end
+  ensure
+    $stderr = previous_stderr
   end
 ensure
   Net::HTTP.define_singleton_method(:new, original_new)

@@ -87,21 +87,32 @@ module IntegrationClient
     end
 
     def request(path = '/', secure: true, credentials: nil, headers: {})
-      http = Net::HTTP.new(@host, secure ? 443 : 80, nil)
-      if secure
-        http.use_ssl = true
-        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-        http.cert_store = @store
-        # Ruby 2.7.2 Net::HTTP checks hostname after the verified handshake.
+      attempts = 0
+      begin
+        attempts += 1
+        http = Net::HTTP.new(@host, secure ? 443 : 80, nil)
+        if secure
+          http.use_ssl = true
+          http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+          http.cert_store = @store
+          # Ruby 2.7.2 Net::HTTP checks hostname after the verified handshake.
+        end
+        http.open_timeout = operation_timeout(5)
+        http.read_timeout = operation_timeout(5)
+        http.write_timeout = operation_timeout(5)
+        http.max_retries = 0
+        req = Net::HTTP::Get.new(path)
+        headers.each { |name, value| req[name] = value }
+        req.basic_auth(*credentials) if credentials
+        http.request(req)
+      rescue Net::OpenTimeout => error
+        # Only connection establishment is retried; response assertions and
+        # certificate verification errors must still fail immediately.
+        warn "HTTP connection timeout: host=#{@host} attempt=#{attempts}/3 error=#{error.class}: #{error.message}"
+        raise if attempts >= 3
+        sleep 0.25
+        retry
       end
-      http.open_timeout = operation_timeout(5)
-      http.read_timeout = operation_timeout(5)
-      http.write_timeout = operation_timeout(5)
-      http.max_retries = 0
-      req = Net::HTTP::Get.new(path)
-      headers.each { |name, value| req[name] = value }
-      req.basic_auth(*credentials) if credentials
-      http.request(req)
     end
 
     def ready!(seconds)
