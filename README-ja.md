@@ -1,6 +1,8 @@
 # HTTPS-PORTAL
 
-[![Tests (UT + integration)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml/badge.svg?event=push)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml)
+[![Tests (UT + integration)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml/badge.svg?event=push)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml) [![Security report](https://github.com/yamada28go/https-portal/actions/workflows/security.yml/badge.svg)](https://github.com/yamada28go/https-portal/actions/workflows/security.yml)
+
+セキュリティ検査はreport-onlyです。緑色のバッジは脆弱性検査とSBOM収集の正常終了を示し、脆弱性がないことを意味しません。
 
 HTTPS-PORTALは、[Nginx](http://nginx.org)、[Let's Encrypt](https://letsencrypt.org)、および
 [Docker](https://www.docker.com)を利用した、完全自動化されたHTTPSサーバーです。

@@ -1,6 +1,8 @@
 # HTTPS-PORTAL
 
-[![Tests (UT + integration)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml/badge.svg?event=push)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml)
+[![Tests (UT + integration)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml/badge.svg?event=push)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml) [![Security report](https://github.com/yamada28go/https-portal/actions/workflows/security.yml/badge.svg)](https://github.com/yamada28go/https-portal/actions/workflows/security.yml)
+
+Security reporting is report-only: a passing badge means vulnerability scanning and SBOM collection completed successfully, not that the image has no vulnerabilities.
 
 HTTPS-PORTAL is a fully automated HTTPS server powered by
 [Nginx](http://nginx.org), [Let's Encrypt](https://letsencrypt.org) and
