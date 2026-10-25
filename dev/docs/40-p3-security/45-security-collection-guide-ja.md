@@ -106,4 +106,4 @@ ID照合修正後は、Java DBを含む成功済みprepared.jsonをそのまま�
 
 Linuxのbind権限：検査前に今回runのarchiveを0640、inputを0750、result directoryを02770、ホスト側で事前作成したraw JSON/SBOMを0660へ設定し、実GIDをscannerへ--group-addで渡す。cap-drop ALLを維持し、入力読取りと出力書込みを許可する。Windowsのbind動作は変更しない。初回Actionsのarchive Permission deniedへの修正であり、修正後の新commitでActions再受入が必要。
 
-Critical／High件数のREADME表示を追加。[46 件数バッジ](46-security-count-badges-ja.md)を参照。既定ブランチの成功時だけ自動公開し、PRは公開値を変更しない。
+Critical／High件数のREADME表示を追加。[46 件数バッジ](46-security-count-badges-ja.md)を参照。成功したbranch実行で自動公開し、実行元を自動判定する。PRは公開値を変更しない。

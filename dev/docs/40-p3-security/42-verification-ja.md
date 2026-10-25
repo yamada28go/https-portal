@@ -418,3 +418,14 @@ Linux用の契約では実Unix modeを設定し、Other非公開・archive group
 
 [46 件数バッジの更新方式・初回受入](46-security-count-badges-ja.md)を参照。作業ブランチへのpushでは検証/成果物生成までで、件数は公開しない。既定ブランチ反映後のsecurity-reportとpublish-count-badges成功、3 JSONと元run、README表示の一致を受入する。
 証跡：dev/test-results/p3-security-harness/count-badges-20261025T083727Z/。
+
+## 件数バッジのresource not foundと公開対象の自動判定（2026-10-25）
+
+利用者提供のwork/yamada/add-utページをブラウザーで確認。commit 9d7839d（ci: publish Critical and High vulnerability count badges）ではTests/Security reportがpassingである一方、Critical/Highがともにcustom badge / resource not foundだった。公開ジョブを既定ブランチ限定にしていたため、作業ブランチの成功では表示用JSONを初期公開できない設計だった。
+
+作業ブランチを明示設定する案は利用者から不採用の指示。最終実装は固定ブランチ名を使用せず、成功したbranchのpush/手動/日次からGITHUB_REF_NAMEを自動取得して公開する。PR・tag・生成データ用security-badgesは公開しない。実行元HEADの二重確認と古いrunのskip、source repository/commit/ref一致、公開ジョブだけのcontents:write、force-push禁止は維持する。過去の公開元と今回のbranchが違うことだけでは拒否せず、マージ後も同じ処理を継続する。
+
+表示の意味は「リポジトリ内で最後に公開された成功検査」の件数。閲覧中branch専用の件数ではない。latest.jsonにはその実行元branch/commit/run/日時を保持し、READMEにも明記した。表示先URLは変更せず、branch移行・マージの設定変更は不要。既定ブランチ限定という前節の初期設計を本修正で置き換える。
+
+検証：26件成功。作業ブランチ公開、公開元branch変更後の既定ブランチ更新、実行branch不一致の拒否、生成データbranchの拒否を追加。PowerShell 7/5.1構文とactionlint成功。remoteへはまだ反映していない。修正commit/push後、security-reportとpublish-count-badges成功、rawの3 JSON、ShieldsとREADMEの実件数表示を受入する。単なるRe-runでは古い公開条件のままになる。
+証跡：dev/test-results/p3-security-harness/count-badge-branch-fix-20261025T090941Z/。

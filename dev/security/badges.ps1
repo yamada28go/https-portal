@@ -59,12 +59,12 @@ function Invoke-SecurityBadgeGitHub([string]$Method,[string]$Path,$Body=$null,[s
         throw ('Badge GitHub API request failed: '+$Method+' '+$Path+' (HTTP '+$status+')')
     }
 }
-function Publish-SecurityBadgeData($Data,[string]$Repository,[string]$DefaultBranch,[string]$HeadSha) {
+function Publish-SecurityBadgeData($Data,[string]$Repository,[string]$SourceBranch,[string]$HeadSha) {
     Assert-SecurityBadgeData $Data
-    if($Data.repository -cne $Repository -or $Data.commit -cne $HeadSha -or $Data.ref -cne ('refs/heads/'+$DefaultBranch) -or $DefaultBranch -ceq 'security-badges') { throw 'Count badges may only be published from the default branch' }
+    if($Data.repository -cne $Repository -or $Data.commit -cne $HeadSha -or $Data.ref -cne ('refs/heads/'+$SourceBranch) -or $SourceBranch -ceq 'security-badges') { throw 'Count badges must match the scanned source branch' }
     $base='/repos/'+$Repository
-    $head=Invoke-SecurityBadgeGitHub 'GET' ($base+'/git/ref/heads/'+[Uri]::EscapeDataString($DefaultBranch))
-    if($head.object.sha -cne $HeadSha){Write-Host 'Skip badge publication: default branch has advanced.';return 'skipped'}
+    $head=Invoke-SecurityBadgeGitHub 'GET' ($base+'/git/ref/heads/'+[Uri]::EscapeDataString($SourceBranch))
+    if($head.object.sha -cne $HeadSha){Write-Host 'Skip badge publication: source branch has advanced.';return 'skipped'}
     $old=Invoke-SecurityBadgeGitHub 'GET' ($base+'/git/ref/heads/security-badges') -AllowNotFound
     if($old) {
         $commit=Invoke-SecurityBadgeGitHub 'GET' ($base+'/git/commits/'+$old.object.sha)
@@ -76,7 +76,7 @@ function Publish-SecurityBadgeData($Data,[string]$Repository,[string]$DefaultBra
         if($blob.encoding -ne 'base64'){throw 'Unexpected published metadata encoding'}
         $previous=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($blob.content)) | ConvertFrom-Json
         Assert-SecurityBadgeData $previous
-        if($previous.repository -cne $Repository -or $previous.ref -cne $Data.ref){throw 'Published badge source mismatch'}
+        if($previous.repository -cne $Repository){throw 'Published badge source mismatch'}
         if([long]$previous.runId -gt [long]$Data.runId -or ([long]$previous.runId -eq [long]$Data.runId -and [long]$previous.runAttempt -ge [long]$Data.runAttempt)){Write-Host 'Skip badge publication: run is already published or superseded.';return 'skipped'}
     }
     $files=Get-SecurityBadgeFiles $Data
@@ -87,8 +87,8 @@ function Publish-SecurityBadgeData($Data,[string]$Repository,[string]$DefaultBra
     if($old){$body.parents=@($old.object.sha)}else{$body.parents=@()}
     $commit=Invoke-SecurityBadgeGitHub 'POST' ($base+'/git/commits') $body
     # Recheck before moving the publication ref. Never force-push.
-    $head=Invoke-SecurityBadgeGitHub 'GET' ($base+'/git/ref/heads/'+[Uri]::EscapeDataString($DefaultBranch))
-    if($head.object.sha -cne $HeadSha){Write-Host 'Skip badge publication: default branch advanced during preparation.';return 'skipped'}
+    $head=Invoke-SecurityBadgeGitHub 'GET' ($base+'/git/ref/heads/'+[Uri]::EscapeDataString($SourceBranch))
+    if($head.object.sha -cne $HeadSha){Write-Host 'Skip badge publication: source branch advanced during preparation.';return 'skipped'}
     if($old){$null=Invoke-SecurityBadgeGitHub 'PATCH' ($base+'/git/refs/heads/security-badges') @{sha=$commit.sha;force=$false}}
     else{$null=Invoke-SecurityBadgeGitHub 'POST' ($base+'/git/refs') @{ref='refs/heads/security-badges';sha=$commit.sha}}
     Write-Host ('Published Critical/High counts from '+$Data.runUrl)

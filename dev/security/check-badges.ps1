@@ -30,7 +30,7 @@ try {
  function Invoke-SecurityBadgeGitHub([string]$Method,[string]$Path,$Body=$null,[switch]$AllowNotFound){
   $script:calls+=@{method=$Method;path=$Path;body=$Body}
   if($script:mode -eq 'api-failure'){throw 'Simulated API failure'}
-  if($Path -match '/git/ref/heads/master$'){return @{object=@{sha=$(if($script:mode -eq 'advanced'){'e'*40}else{$script:expectedCommit})}}}
+  if($Path -match '/git/ref/heads/(master|work%2Fyamada%2Fadd-ut)$'){return @{object=@{sha=$(if($script:mode -eq 'advanced'){'e'*40}else{$script:expectedCommit})}}}
   if($Path -match '/git/ref/heads/security-badges$'){if($script:mode -eq 'create'){return $null};return @{object=@{sha='f'*40}}}
   if($Method -eq 'GET' -and $Path -match '/git/commits/'){return @{tree=@{sha='1'*40}}}
   if($Method -eq 'GET' -and $Path -match '/git/trees/'){
@@ -38,7 +38,7 @@ try {
    return @{tree=@($names|ForEach-Object {@{path=$_;type='blob';sha='2'*40}})}
   }
   if($Method -eq 'GET' -and $Path -match '/git/blobs/'){
-   $previous=Clone $data;$previous.runId=if($script:mode -eq 'newer'){'101'}else{'99'};$previous.runUrl='https://github.com/owner/repository/actions/runs/'+$previous.runId
+   $previous=Clone $data;if($script:mode -eq 'source-switch'){$previous.ref='refs/heads/work/yamada/add-ut'};$previous.runId=if($script:mode -eq 'newer'){'101'}else{'99'};$previous.runUrl='https://github.com/owner/repository/actions/runs/'+$previous.runId
    return @{encoding='base64';content=[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($previous|ConvertTo-Json -Depth 8 -Compress)))}
   }
   if($Method -eq 'POST' -and $Path -match '/git/trees$'){
@@ -60,6 +60,17 @@ try {
   if($case -eq 'create' -and @($script:calls|Where-Object {$_.path -match '/git/commits$'})[0].body.parents.Count -ne 0){throw 'New badge branch is not orphaned'}
   $checks+=($case+' publication: passed')
  }
+ $script:mode='update';$script:calls=@()
+ $work=Clone $data;$work.ref='refs/heads/work/yamada/add-ut'
+ $out=Publish-SecurityBadgeData $work 'owner/repository' 'work/yamada/add-ut' $commit
+ if($out -cne 'published' -or !@($script:calls|Where-Object {$_.path -match '/git/ref/heads/work%2Fyamada%2Fadd-ut$'}).Count){throw 'Current branch was not resolved dynamically'}
+ $checks+='Work branch publication with automatic source identity: passed'
+ $script:mode='source-switch';$script:calls=@();$out=Publish-SecurityBadgeData $data 'owner/repository' 'master' $commit
+ if($out -cne 'published'){throw 'Post-merge default branch publication failed'}
+ $checks+='Default branch publication after source branch change: passed'
+ Reject 'Mismatched execution branch refused' {Publish-SecurityBadgeData $work 'owner/repository' 'master' $commit}
+ $sink=Clone $data;$sink.ref='refs/heads/security-badges'
+ Reject 'Generated data branch cannot republish' {Publish-SecurityBadgeData $sink 'owner/repository' 'security-badges' $commit}
  $script:mode='collision';Reject 'Unrelated branch preserved' {Publish-SecurityBadgeData $data 'owner/repository' 'master' $commit}
  $script:mode='api-failure';Reject 'API failure visible' {Publish-SecurityBadgeData $data 'owner/repository' 'master' $commit}
  $script:mode='create';$script:calls=@();Reject 'PR publication refused' {Publish-SecurityBadgeData $pr 'owner/repository' 'master' $commit}
