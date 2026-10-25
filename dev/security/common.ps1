@@ -105,8 +105,35 @@ function Assert-SecurityDatabaseIdentity($Actual,$Expected,[ValidateSet('vulnera
 # Docker's selected ID can be a manifest/index digest with the containerd store.
 # Trivy reports the config digest. Derive it from the exact pinned export,
 # rather than accepting whatever ID the report supplies.
-function Get-SecurityArchiveIdentity([string]$ScannerId,[string]$InputDirectory) {
-    $base = (Get-SecurityContainerArgs) + @('--tmpfs','/tmp:rw,nosuid,nodev,size=32m','--mount',('type=bind,source=' + $InputDirectory + ',target=/input,readonly'))
+# Share this run's Linux bind files through their existing groups.
+# cap-drop ALL prevents root from bypassing host-owned 0600 permissions.
+function Initialize-SecurityBindAccess([string]$InputDirectory,[string]$Results) {
+    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Unix) {
+        return [pscustomobject]@{mode='desktop';dockerArgs=@();groupIds=@()}
+    }
+    $archive = Join-Path $InputDirectory 'image.tar'
+    $outputs = @((Join-Path $Results 'vulnerabilities.raw.json'),(Join-Path $Results 'sbom.cdx.json'))
+    foreach ($path in $outputs) {
+        if (Test-Path -LiteralPath $path) { throw 'Refusing to overwrite a preexisting scanner output' }
+        [IO.File]::WriteAllText($path,'',[Text.UTF8Encoding]::new($false))
+        [IO.File]::SetUnixFileMode($path,[IO.UnixFileMode]432) # 0660
+    }
+    [IO.File]::SetUnixFileMode($Results,[IO.UnixFileMode]1528) # 02770, setgid
+    [IO.File]::SetUnixFileMode($InputDirectory,[IO.UnixFileMode]488) # 0750
+    [IO.File]::SetUnixFileMode($archive,[IO.UnixFileMode]416) # 0640
+    $stat = (Get-Command stat -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+    $paths = @($Results,$InputDirectory,$archive) + $outputs
+    $groups = @(& $stat '-c' '%g' '--' @paths)
+    if ($LASTEXITCODE -ne 0 -or $groups.Count -ne $paths.Count) { throw 'Cannot determine scanner bind file groups' }
+    $containerArgs = @()
+    foreach ($group in @($groups | Sort-Object -Unique)) {
+        if ([string]$group -notmatch '^[0-9]{1,10}$') { throw 'Invalid scanner bind file group' }
+        $containerArgs += @('--group-add',[string]$group)
+    }
+    [pscustomobject]@{mode='unix-shared-groups';dockerArgs=$containerArgs;groupIds=@($groups | Sort-Object -Unique)}
+}
+function Get-SecurityArchiveIdentity([string]$ScannerId,[string]$InputDirectory,[string[]]$AccessArgs=@()) {
+    $base = (Get-SecurityContainerArgs) + $AccessArgs + @('--tmpfs','/tmp:rw,nosuid,nodev,size=32m','--mount',('type=bind,source=' + $InputDirectory + ',target=/input,readonly'))
     $out = Invoke-SecurityDocker -DockerArgs ($base + @('--entrypoint','/bin/tar',$ScannerId,'-xOf','/input/image.tar','manifest.json')) -LogName 'archive-manifest'
     try { $manifest = @($out.stdout | ConvertFrom-Json) } catch { throw 'Invalid Docker archive manifest JSON' }
     if ($manifest.Count -ne 1) { throw 'A Docker archive with exactly one image manifest is required' }

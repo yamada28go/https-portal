@@ -78,6 +78,7 @@ $originalDocker=(Get-Item Function:Invoke-SecurityDocker).ScriptBlock
 try {
     function Invoke-SecurityDocker {
         param([string[]]$DockerArgs,[string]$LogName)
+        $script:contractSeenDockerArgs=$DockerArgs
         if ($DockerArgs[([Array]::IndexOf($DockerArgs,'--network')+1)] -ne 'none' -or $DockerArgs -notcontains '--read-only') {throw 'Archive inspection lost isolation'}
         if ($LogName -eq 'archive-manifest') {return [pscustomobject]@{stdout=$script:contractManifest}}
         if ($LogName -eq 'archive-config-hash') {return [pscustomobject]@{stdout=$script:contractConfigHash}}
@@ -92,6 +93,9 @@ try {
     $identity=Get-SecurityArchiveIdentity $id 'fixture-input'
     if ($identity.configImageId -cne $id) {throw 'OCI archive config ID mismatch'}
     $checks+='OCI archive config ID: passed'
+    $null=Get-SecurityArchiveIdentity $id 'fixture-input' @('--group-add','1234')
+    if($script:contractSeenDockerArgs[([Array]::IndexOf($script:contractSeenDockerArgs,'--group-add')+1)] -ne '1234' -or $script:contractSeenDockerArgs -contains '--cap-add'){throw 'Archive supplemental group propagation failed'}
+    $checks+='Bind group propagation preserves capability limits: passed'
     $script:contractConfigHash=('b'*64)+'  /tmp/config.json'
     Expect-Rejection 'Archive config content digest mismatch' {Get-SecurityArchiveIdentity $id 'fixture-input'}
     $script:contractManifest='[{"Config":"../../private"}]'
@@ -100,10 +104,10 @@ try {
     Expect-Rejection 'Ambiguous multiple image archive' {Get-SecurityArchiveIdentity $id 'fixture-input'}
     $script:contractManifest='{BROKEN'
     Expect-Rejection 'Broken archive manifest' {Get-SecurityArchiveIdentity $id 'fixture-input'}
-    $checks | Select-Object -Last 6
+    $checks | Select-Object -Last 7
 } finally {
     Set-Item Function:Invoke-SecurityDocker $originalDocker
-    Remove-Variable contractManifest,contractConfigHash -Scope Script -ErrorAction SilentlyContinue
+    Remove-Variable contractManifest,contractConfigHash,contractSeenDockerArgs -Scope Script -ErrorAction SilentlyContinue
 }
 
 # Resolve paths against PowerShell's location, not the process directory.
@@ -118,4 +122,31 @@ try {
 } finally {
     Pop-Location
     [Environment]::CurrentDirectory=$originalProcessDirectory
+}
+# Exercise real Unix modes on Linux CI; desktop keeps its bind behavior.
+$bindRoot=Join-Path ([IO.Path]::GetTempPath()) ('hp-security-bind-'+[Guid]::NewGuid().ToString('N'))
+$bindInput=Join-Path $bindRoot '.input'
+New-Item -ItemType Directory -Path $bindInput -Force | Out-Null
+[IO.File]::WriteAllText((Join-Path $bindInput 'image.tar'),'synthetic archive permission fixture')
+try {
+    $access=Initialize-SecurityBindAccess $bindInput $bindRoot
+    if ([Environment]::OSVersion.Platform -eq [PlatformID]::Unix) {
+        if($access.mode -ne 'unix-shared-groups' -or $access.dockerArgs.Count -lt 2){throw 'Unix bind groups missing'}
+        foreach($path in @($bindRoot,$bindInput,(Join-Path $bindInput 'image.tar'),(Join-Path $bindRoot 'vulnerabilities.raw.json'),(Join-Path $bindRoot 'sbom.cdx.json'))){
+            if(([int][IO.File]::GetUnixFileMode($path) -band 7) -ne 0){throw 'Scanner bind permissions exposed to Other'}
+        }
+        if(([int][IO.File]::GetUnixFileMode((Join-Path $bindInput 'image.tar')) -band 32) -eq 0){throw 'Archive group read missing'}
+        foreach($name in @('vulnerabilities.raw.json','sbom.cdx.json')){
+            $path=Join-Path $bindRoot $name
+            if(([int][IO.File]::GetUnixFileMode($path) -band 48) -ne 48){throw 'Output group read/write missing'}
+            [IO.File]::WriteAllText($path,'{"host":"can-read-write"}')
+            $null=Read-SecurityJson $path
+        }
+        'Linux archive/output permissions and supplemental groups: passed'
+    } elseif($access.mode -ne 'desktop' -or $access.dockerArgs.Count -ne 0){throw 'Desktop bind behavior changed'}
+    else {'Desktop bind permissions unchanged: passed'}
+} finally {
+    foreach($path in @((Join-Path $bindInput 'image.tar'),(Join-Path $bindRoot 'vulnerabilities.raw.json'),(Join-Path $bindRoot 'sbom.cdx.json'))){if(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path -Force}}
+    Remove-Item -LiteralPath $bindInput
+    Remove-Item -LiteralPath $bindRoot
 }

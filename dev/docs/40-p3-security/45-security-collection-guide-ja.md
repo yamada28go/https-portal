@@ -103,3 +103,5 @@ ID照合修正後は、Java DBを含む成功済みprepared.jsonをそのまま�
 準備receiptの相対パスはPowerShellの現在位置から解決する。process directoryが異なる場合の回帰確認を含め、データ契約32件が成功。
 
 最新受入：製品でcollected/complete、cleanup=passed。主要4成果物hashとJSON/SBOMのconfig ID一致を確認。package entry 272、SBOM component 274。Critical 12 / High 135 / Medium 198 / Low 237 / Unknown 18を収集した。検出の解消は未実施。詳細は検証記録の『製品イメージの初回収集受入成功』を参照。
+
+Linuxのbind権限：検査前に今回runのarchiveを0640、inputを0750、result directoryを02770、ホスト側で事前作成したraw JSON/SBOMを0660へ設定し、実GIDをscannerへ--group-addで渡す。cap-drop ALLを維持し、入力読取りと出力書込みを許可する。Windowsのbind動作は変更しない。初回Actionsのarchive Permission deniedへの修正であり、修正後の新commitでActions再受入が必要。

@@ -361,3 +361,23 @@ Criticalの初期内訳：Ruby関連が10レコード（libruby3.3/ruby3.3の各
 
 証跡：dev/test-results/p3-security/20261025t071211z-49f60b78/。
 次は今回変更のcommit/push後にsecurity-report Actionsの成功とartifact内容を照合する。並行してCritical/Highの一次分類を行う。重大度ゲートや広範な例外除外を先に有効化しない。
+
+## security-report初回Actions失敗とLinux bind権限修正（2026-10-25）
+
+利用者貼付のSecurity report #1ログを確認（公開run URLは未提供）。commit 1cccbeeb4c3d1f0536a79e5c2213d6422041f4c6で製品buildと契約32件は成功。準備20261025t073141z-c1949a0eは両DBのdownload/metadata/hashまで成功。検査20261025t073227z-8188118bはimage export後、archive-manifestでtar: can't open '/input/image.tar': Permission denied、exit 1。重大度ゲートによる失敗ではなく、まだ脆弱性scanへ未到達。ログのdb-before no such volumeは新規volume作成前の存在確認であり、この停止原因ではない。
+
+原因分析：Linux runner所有のbindファイルと、cap-drop ALLでrootのDAC迂回も無効なscannerとのアクセス権が未調整だった。貼付ログにはstatの実modeはないため、archiveが0600だったかは未確認。入力だけ許可しても、runner所有の出力directoryへのJSON/SBOM書込みで同種の失敗が起こり得る。
+
+修正：dev/security/common.ps1にInitialize-SecurityBindAccessを追加し、export後のbind-access段階で今回runの資材だけ権限を設定。Unixではarchive=0640、input directory=0750、result directory=02770（setgid）、raw JSON/SBOMはホスト側で事前作成して0660とする。statでこれらの実GIDを取得し、archive読取り・scan・SBOM変換に--group-addで渡す。root scannerが出力をtruncateしてもホスト所有権が保たれる。World/Otherには公開しない。network none/read-only/cap-drop ALL/no-new-privileges/pull neverは維持し、cap-add・privileged・sudo・chownを追加しない。Windowsは従来のDocker Desktop bind動作を維持。record.bindAccessへ実行方式・group IDを記録。
+
+Trivy固定版のOutputWriterはos.Createで出力ファイルを開く実装であり、事前作成済みファイルを利用できることを公式ソースで確認した。
+https://github.com/aquasecurity/trivy/blob/v0.76.1/pkg/flag/options.go
+Dockerのadditional groupsとcapabilitiesの説明：https://docs.docker.com/engine/containers/run/
+
+Linux用の契約では実Unix modeを設定し、Other非公開・archive group read・出力group read/write・host側読み書き・GID引渡しを確認する。既存security-reportはbuild前にcheck-contractsを実行するため、workflow自体の変更は不要。
+
+ローカル受入：PowerShell 7/5.1構文成功、Windowsで契約34件成功。Linux専用modeの実行は今回ホストでは未実施（WSLはE_ACCESSDENIED）。代役Dockerの制御回帰は別記の結果を参照。Windowsの成功をLinux/Docker実受入成功とは扱わない。
+
+次：この修正をcommit/pushし、新commitのsecurity-reportを受入する。旧commitのRe-runでは修正が入らない。archive-manifest→scan→SBOM→cleanupとartifact内容を確認するまでActionsの受入は未完了。
+
+今回のDocker代役17件は全件成功。証跡：dev/test-results/p3-security-harness/linux-bind-fix-20261025T074425Z/。Linux実mode・Docker受入は次のActions新commitで確認する。

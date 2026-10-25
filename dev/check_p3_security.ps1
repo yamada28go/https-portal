@@ -52,8 +52,11 @@ try {
     Invoke-SecurityDocker -DockerArgs @('image','save','--output',$archive,$image.Id) -LogName 'image-export' -TimeoutSeconds 600 | Out-Null
     if (!(Test-Path -LiteralPath $archive) -or (Get-Item -LiteralPath $archive).Length -le 0) { throw 'Image archive was not created' }
     $record.imageArchiveSha256=(Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+    $record.stage='bind-access'
+    $access = Initialize-SecurityBindAccess $inputDir $results
+    $record.bindAccess=$access
     $record.stage='archive-identity'
-    $identity = Get-SecurityArchiveIdentity $scanner.Id $inputDir
+    $identity = Get-SecurityArchiveIdentity $scanner.Id $inputDir $access.dockerArgs
     $record.archiveIdentity=$identity
     $record.scanImageId=$identity.configImageId
     $oldWork = Invoke-SecurityDocker -DockerArgs @('volume','inspect',$workVolume) -LogName 'work-before' -AllowFailure
@@ -62,7 +65,7 @@ try {
     $workCreated=$true
     if ($created.stdout.Trim() -cne $workVolume) { throw 'Unexpected scanner work volume' }
     $record.stage='vulnerability-scan'
-    $base = (Get-SecurityContainerArgs) + @('--tmpfs','/tmp:rw,nosuid,nodev,size=256m','--env','TMPDIR=/scratch/tmp','--mount',('type=bind,source=' + $inputDir + ',target=/input,readonly'),'--mount',('type=bind,source=' + $results + ',target=/output'),'--mount',('type=volume,source=' + $receipt.databaseVolume + ',target=/prepared,readonly'),'--mount',('type=volume,source=' + $workVolume + ',target=/scratch'))
+    $base = (Get-SecurityContainerArgs) + $access.dockerArgs + @('--tmpfs','/tmp:rw,nosuid,nodev,size=256m','--env','TMPDIR=/scratch/tmp','--mount',('type=bind,source=' + $inputDir + ',target=/input,readonly'),'--mount',('type=bind,source=' + $results + ',target=/output'),'--mount',('type=volume,source=' + $receipt.databaseVolume + ',target=/prepared,readonly'),'--mount',('type=volume,source=' + $workVolume + ',target=/scratch'))
     $entry = 'mkdir -p /scratch/cache/db /scratch/cache/java-db /scratch/tmp && cp /prepared/db/trivy.db /prepared/db/metadata.json /scratch/cache/db/ && cp /prepared/java-db/trivy-java.db /prepared/java-db/metadata.json /scratch/cache/java-db/ && exec trivy "$@"'
     $scanArgs = @('--entrypoint','/bin/sh',$scanner.Id,'-c',$entry,'trivy-offline','image','--config','','--input','/input/image.tar','--cache-dir','/scratch/cache','--skip-db-update','--skip-java-db-update','--skip-check-update','--offline-scan','--skip-version-check','--disable-telemetry','--no-progress','--scanners','vuln','--list-all-pkgs','--ignorefile','/dev/null','--severity','UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL','--exit-code','0','--timeout','15m','--format','json','--output','/output/vulnerabilities.raw.json')
     Invoke-SecurityDocker -DockerArgs ($base + $scanArgs) -LogName 'vulnerability-scan' -TimeoutSeconds 1200 | Out-Null
