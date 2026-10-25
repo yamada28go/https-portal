@@ -1,5 +1,7 @@
 # HTTPS-PORTAL
 
+[![Tests (UT + integration)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml/badge.svg?event=push)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml)
+
 HTTPS-PORTALは、[Nginx](http://nginx.org)、[Let's Encrypt](https://letsencrypt.org)、および
 [Docker](https://www.docker.com)を利用した、完全自動化されたHTTPSサーバーです。
 これを使用することで、追加の設定を1行だけ加えることで、既存のWebアプリケーションをHTTPS上で動作させることができます。

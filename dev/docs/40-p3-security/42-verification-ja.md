@@ -391,3 +391,19 @@ Linux用の契約では実Unix modeを設定し、Other非公開・archive group
 回帰：Windowsでも.inputへHidden属性を明示して隠しdirectory cleanupを実行し、PS7で契約35件成功。PowerShell 7/5.1構文成功。利用者ログにより前回追加した実Linux mode/GID契約の成功は確認できたが、修正後Linuxのcleanupと製品scanは次の新commitで受入待ち。
 
 次：修正をcommit/pushして新しいActions実行を確認する。commit例：fix: clean up hidden security test directories。
+
+## security-report Actionsのpush実行成功（2026-10-25）
+
+[run 40174288486](https://github.com/yamada28go/https-portal/actions/runs/40174288486)の公開画面をブラウザーで照合した。
+
+- Workflow：Security report #3、fix: clean up hidden security test directories。
+- commit：a1301d722dbf20cb9a7b1e0761f4b45d5d94a9df。
+- branch：work/yamada/add-ut、push起動、2026-10-25 16:50 JST。
+- 全体：Status Success、所要3m1s。
+- security-report：completed successfully、2m58s。
+- artifact：security-evidence-40174288486-1、518 KB、1件生成。
+- 公開artifact digest：sha256:bce2efbe6ff350389cfe7ebdc9155db1608023e219b31c71aa518e7f8d20495c。
+
+判定：Linux bindアクセス・隠しfixture cleanup修正を含むsecurity-reportのpush成功を確認。ローカル製品収集成功に加え、GitHub Actionsの収集ジョブが成功した。公開画面ではログ閲覧にSign inが必要で、artifactの内部JSON/SBOM/hash/cleanupやCI側の重大度別件数は未照合。artifact生成確認と内容確認を区別する。ローカルのCritical 12/High 135をCI結果として転記しない。
+
+次：artifactを取得できる環境でresult=collected/complete、cleanup、image/config ID対応、成果物hash、SBOM、検出件数を照合する。その後Critical/Highの一次分類と修正・期限付き例外の方針を確定する。report-onlyは維持。PR/手動/日次の起動・必須チェック・重大度ゲート等のP3残要件は別途受入する。

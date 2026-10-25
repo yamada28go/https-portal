@@ -1,5 +1,7 @@
 # HTTPS-PORTAL
 
+[![Tests (UT + integration)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml/badge.svg?event=push)](https://github.com/yamada28go/https-portal/actions/workflows/tests.yml)
+
 HTTPS-PORTAL is a fully automated HTTPS server powered by
 [Nginx](http://nginx.org), [Let's Encrypt](https://letsencrypt.org) and
 [Docker](https://www.docker.com). By using it, you can run any existing web
