@@ -38,3 +38,21 @@ HTTPの制限は各接続・読み取り・書き込みの制限であり、リクエスト全体の厳密な締切で
 2. docker-smoke (amd64)/(arm64) が全13シナリオ成功する。
 3. 各CPUの result.json が result=passed、imagePlatforms が期待CPU、cleanup=passed となる。
 4. 失敗が続く場合は新しい成果物の probe stdout/stderr と該当シナリオの診断ログを再確認する。
+
+## 追記: Tests #13 の試験イメージ build 失敗
+
+ユーザー提供ログでは docker-smoke (amd64) が build-tools で失敗している。これは元の proxy 通信試験の再発とは区別する。check_client.rb の最初の4チェックは成功し、5件目の「expired startup deadline fails and clears budget」の assertion で停止した。
+
+原因は追加した試験の不備。fixture が @readiness_deadline だけを過去へ変更しており、ready! のローカル変数 deadline は5秒後のままだった。sleep を省略した試験ループが実時間で5秒間再試行を続け、「1回で終了」という期待に反した。
+
+修正は check_client.rb のみ。Process.clock_gettime の単調時計を試験中だけ制御し、開始100秒→通信操作中106秒と進めることで、5秒の期限を両方の処理に同時に超過させる。時計は ensure で必ず復元する。assertion の削除や期待回数の緩和は行わない。
+
+実行検証:
+
+- 公式 RubyInstaller 3.4.12 (Windows x64) で修正前のチェックを実行し、同じ5件目の失敗を再現（exit 1）。
+- 同じ実行環境で修正後の7チェックがすべて成功（exit 0）。
+- Prism による構文検査も成功。
+- RubyInstaller 2.7.2 はこのホストで DLL 再配置エラーとなり起動できなかった。Ruby 2.7.2/Linux と ARM64 による確認は Actions で未受入。
+- 製品コードと client.rb の動作はこの追記の修正では変更していない。
+
+ローカル実行ログはチャット作業ディレクトリの work/multiarch/client-before-fix.log と client-after-fix.log に保存。修正を新たに commit/push した run で、build-tools の7チェックと全13シナリオを両CPUとも確認する。

@@ -12,18 +12,18 @@ end
 
 class ReadyFixture < IntegrationClient::Client
   attr_reader :attempts
-  def initialize(failures: [], fingerprints: nil, expire: false)
+  def initialize(failures: [], fingerprints: nil, advance_clock: nil)
     super('proxy.test')
     @failures = failures
     @fingerprints = fingerprints
-    @expire = expire
+    @advance_clock = advance_clock
     @attempts = 0
   end
   def establish_trust
     @attempts += 1
     # This fails if ready! starts its own asynchronous timer around operations.
     assert(Thread.list.length == 1)
-    @readiness_deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) - 1 if @expire
+    @advance_clock.call(6) if @advance_clock
     failure = @failures.shift
     raise failure if failure
   end
@@ -64,13 +64,24 @@ check('contract failure is not retried') do
   end
 end
 check('expired startup deadline fails and clears budget') do
-  client = ReadyFixture.new(expire: true)
+  # Advance the clock used by BOTH ready!'s loop and the operation budget.
+  # Mutating only @readiness_deadline leaves the loop's local deadline intact.
+  original_clock = Process.method(:clock_gettime)
+  now = 100.0
+  Process.define_singleton_method(:clock_gettime) do |clock, *args|
+    clock == Process::CLOCK_MONOTONIC ? now : original_clock.call(clock, *args)
+  end
   begin
-    client.ready!(5)
-    raise 'Expired readiness was accepted'
-  rescue IntegrationClient::NotReady => error
-    assert(error.message.include?('Startup deadline reached'))
-    assert(client.attempts == 1 && client.operation_timeout(10) == 10)
+    client = ReadyFixture.new(advance_clock: ->(seconds) { now += seconds })
+    begin
+      client.ready!(5)
+      raise 'Expired readiness was accepted'
+    rescue IntegrationClient::NotReady => error
+      assert(error.message.include?('Startup deadline reached'))
+      assert(client.attempts == 1 && client.operation_timeout(10) == 10)
+    end
+  ensure
+    Process.define_singleton_method(:clock_gettime, original_clock)
   end
 end
 check('operation timeout uses remaining startup budget') do
