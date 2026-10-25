@@ -144,9 +144,17 @@ try {
         }
         'Linux archive/output permissions and supplemental groups: passed'
     } elseif($access.mode -ne 'desktop' -or $access.dockerArgs.Count -ne 0){throw 'Desktop bind behavior changed'}
-    else {'Desktop bind permissions unchanged: passed'}
+    else {
+        # Reproduce hidden-directory cleanup on Windows as well as Unix CI.
+        [IO.File]::SetAttributes($bindInput,([IO.File]::GetAttributes($bindInput) -bor [IO.FileAttributes]::Hidden))
+        'Desktop bind permissions unchanged: passed'
+    }
 } finally {
     foreach($path in @((Join-Path $bindInput 'image.tar'),(Join-Path $bindRoot 'vulnerabilities.raw.json'),(Join-Path $bindRoot 'sbom.cdx.json'))){if(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path -Force}}
-    Remove-Item -LiteralPath $bindInput
-    Remove-Item -LiteralPath $bindRoot
+    # .input is hidden on Unix; Force is required by the PowerShell provider.
+    Remove-Item -LiteralPath $bindInput -Force
+    Remove-Item -LiteralPath $bindRoot -Force
 }
+
+if ((Test-Path -LiteralPath $bindInput) -or (Test-Path -LiteralPath $bindRoot)) {throw 'Bind permission fixture cleanup incomplete'}
+'Bind permission fixture cleanup: passed'

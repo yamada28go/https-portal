@@ -381,3 +381,13 @@ Linux用の契約では実Unix modeを設定し、Other非公開・archive group
 次：この修正をcommit/pushし、新commitのsecurity-reportを受入する。旧commitのRe-runでは修正が入らない。archive-manifest→scan→SBOM→cleanupとartifact内容を確認するまでActionsの受入は未完了。
 
 今回のDocker代役17件は全件成功。証跡：dev/test-results/p3-security-harness/linux-bind-fix-20261025T074425Z/。Linux実mode・Docker受入は次のActions新commitで確認する。
+
+## Linux権限契約の隠しdirectory cleanup修正（2026-10-25）
+
+利用者提供ログでLinux archive/output permissions and supplemental groups: passedまで成功した。その直後、check-contracts.ps1のRemove-Item -LiteralPath $bindInputで停止。Linuxの.inputは隠しdirectoryとして扱われ、PowerShell providerで削除に-Forceが必要だった。今回の失敗は契約試験の後片付けであり、製品build/DB準備/製品scanはまだ開始していない。
+
+修正はdev/security/check-contracts.ps1のみ。fixtureの既知3ファイルと空directoryだけを削除する方針を維持し、input/root directoryのRemove-Itemへ-Forceを追加。削除後の残存確認も追加した。再帰削除、sudo、権限追加、失敗の無視は導入しない。
+
+回帰：Windowsでも.inputへHidden属性を明示して隠しdirectory cleanupを実行し、PS7で契約35件成功。PowerShell 7/5.1構文成功。利用者ログにより前回追加した実Linux mode/GID契約の成功は確認できたが、修正後Linuxのcleanupと製品scanは次の新commitで受入待ち。
+
+次：修正をcommit/pushして新しいActions実行を確認する。commit例：fix: clean up hidden security test directories。
