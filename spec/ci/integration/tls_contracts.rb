@@ -71,17 +71,15 @@ def wait_for_variant(client, expected, scenario, seconds)
     remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
     break if remaining <= 0
     begin
-      Timeout.timeout([remaining, 10].min) do
-        # Observe the exact presented fixture; this does not count as validation.
-        peer = client.tls
-        fingerprint = Digest::SHA256.hexdigest(peer[:cert].to_der)
-        intermediate = peer[:chain].any? { |cert| Digest::SHA256.hexdigest(cert.to_der) == expected.fetch('intermediate_sha256') }
-        wanted = scenario == 'tls-chain' ? expected.fetch('leaf_sha256') : expected.fetch('expired_sha256')
-        matches = fingerprint == wanted && (scenario == 'tls-chain' ? !intermediate : intermediate)
-        stable = matches ? stable + 1 : 0
-        return peer if stable >= 3
-        last = "Waiting for #{scenario} fixture after reload"
-      end
+      # Observe the exact presented fixture; this does not count as validation.
+      peer = client.tls(timeout: [remaining, 10].min)
+      fingerprint = Digest::SHA256.hexdigest(peer[:cert].to_der)
+      intermediate = peer[:chain].any? { |cert| Digest::SHA256.hexdigest(cert.to_der) == expected.fetch('intermediate_sha256') }
+      wanted = scenario == 'tls-chain' ? expected.fetch('leaf_sha256') : expected.fetch('expired_sha256')
+      matches = fingerprint == wanted && (scenario == 'tls-chain' ? !intermediate : intermediate)
+      stable = matches ? stable + 1 : 0
+      return peer if stable >= 3 && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+      last = "Waiting for #{scenario} fixture after reload"
     rescue *IntegrationClient::TRANSIENT => error
       stable = 0
       last = "#{error.class}: #{error.message}"

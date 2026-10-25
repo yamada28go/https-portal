@@ -29,10 +29,10 @@ module IntegrationClient
       @root = root
     end
 
-    def tls(store: nil, check_host: @host, sni: @host, version: nil, legacy: false)
+    def tls(store: nil, check_host: @host, sni: @host, version: nil, legacy: false, timeout: 10)
       tcp = nil
       ssl = nil
-      Timeout.timeout(10) do
+      Timeout.timeout(operation_timeout(timeout)) do
         begin
           tcp = TCPSocket.new(@host, 443)
           @client_ip = tcp.addr[3]
@@ -87,25 +87,26 @@ module IntegrationClient
     end
 
     def request(path = '/', secure: true, credentials: nil, headers: {})
-      Timeout.timeout(10) do
-        http = Net::HTTP.new(@host, secure ? 443 : 80, nil)
-        if secure
-          http.use_ssl = true
-          http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-          http.cert_store = @store
-          # Ruby 2.7.2 Net::HTTP checks hostname after the verified handshake.
-        end
-        http.open_timeout = 5
-        http.read_timeout = 5
-        req = Net::HTTP::Get.new(path)
-        headers.each { |name, value| req[name] = value }
-        req.basic_auth(*credentials) if credentials
-        http.request(req)
+      http = Net::HTTP.new(@host, secure ? 443 : 80, nil)
+      if secure
+        http.use_ssl = true
+        http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+        http.cert_store = @store
+        # Ruby 2.7.2 Net::HTTP checks hostname after the verified handshake.
       end
+      http.open_timeout = operation_timeout(5)
+      http.read_timeout = operation_timeout(5)
+      http.write_timeout = operation_timeout(5)
+      http.max_retries = 0
+      req = Net::HTTP::Get.new(path)
+      headers.each { |name, value| req[name] = value }
+      req.basic_auth(*credentials) if credentials
+      http.request(req)
     end
 
     def ready!(seconds)
       deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds
+      @readiness_deadline = deadline
       last = nil
       stable = 0
       fingerprint = nil
@@ -113,15 +114,15 @@ module IntegrationClient
         remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
         break if remaining <= 0
         begin
-          Timeout.timeout([remaining, 10].min) do
-            establish_trust
-            response = request
-            raise NotReady, 'HTTP listener not ready' unless %w[200 401].include?(response.code)
-            current = sha256
-            stable = (current == fingerprint) ? stable + 1 : 1
-            fingerprint = current
-          end
-          return self if stable >= 3
+          # Do not wrap TLS/Net::HTTP timeouts in another asynchronous timeout.
+          # Ruby can deliver a second pending exception after the rescue block.
+          establish_trust
+          response = request
+          raise NotReady, 'HTTP listener not ready' unless %w[200 401].include?(response.code)
+          current = sha256
+          stable = (current == fingerprint) ? stable + 1 : 1
+          fingerprint = current
+          return self if stable >= 3 && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
         rescue *TRANSIENT => error
           stable = 0
           last = "#{error.class}: #{error.message}"
@@ -130,6 +131,15 @@ module IntegrationClient
         sleep [remaining, 1].min if remaining > 0
       end
       raise NotReady, "Readiness timed out after #{seconds}s: #{last}"
+    ensure
+      @readiness_deadline = nil
+    end
+
+    def operation_timeout(maximum)
+      return maximum unless @readiness_deadline
+      remaining = @readiness_deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      raise Timeout::Error, 'Startup deadline reached' if remaining <= 0
+      [remaining, maximum].min
     end
 
     def sha256

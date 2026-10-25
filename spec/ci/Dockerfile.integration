@@ -1,6 +1,7 @@
 # Stdlib-only client/echo fixture; preserve the P1 Ruby baseline.
 FROM ruby:2.7.2-buster@sha256:1dd0106849233fcd913b7c4608078fa1a53a5e3ce1af2a55e4d726b0d8868e2f
 COPY spec/ci/integration /opt/it
+RUN ruby /opt/it/check_client.rb
 ENV HOME=/tmp LANG=C.UTF-8
 USER 1000:1000
 WORKDIR /tmp
