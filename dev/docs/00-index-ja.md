@@ -73,3 +73,9 @@ Testsにdocker-smokeを追加済み・GitHub受入待ち。[36 Actions接続・�
 TLS故意変更検知：20261025t024506z-8f12e242で変更前成功→TLS1.2無効化→protocol version alertによる期待失敗を確認。診断/cleanup成功・残存なし。次はmutationなしの正常復帰と全13件回帰。
 
 手順5のローカル受入完了：故意変更検知に続き、20261025t024745z-c4d9ac62で全13件×2回（26件）成功。TLS正常復帰・全件診断/cleanup成功・残存なし。次はTLS変更のcommit/push後、Actionsとartifactの全13件/cleanupを確認。
+
+TLS変更のActions確認：run 40163898918 / commit 2fe7819でlint-and-unit・docker-smokeとも成功し、artifact2件生成を確認。成果物内の全13件/cleanupはサインインが必要なため未照合。
+
+手順6初期：脆弱性レポートとSBOMの収集基盤を実装済み・製品初回受入待ち。[45 収集の準備・実行手順](40-p3-security/45-security-collection-guide-ja.md)を参照。準備だけ外部通信を許可し、検査はnetwork none。初期はreport-onlyで重大度ゲート未導入。
+
+手順6初期のローカル収集受入成功：20261025t071211z-49f60b78で製品レポート/SBOMを生成し、両DB・ID対応・成果物hash・cleanupを照合。Critical 12 / High 135を含むreport-only収集。次はsecurity-report Actionsとartifactの受入、重大検出の一次分類。P3全体完了・脆弱性解消とはしない。

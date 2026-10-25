@@ -1,0 +1,40 @@
+{
+  "ArtifactType": "container_image",
+  "Metadata": {
+    "ImageID": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "OS": {
+      "Name": "12",
+      "Family": "debian"
+    }
+  },
+  "SchemaVersion": 2,
+  "Results": [
+    {
+      "Class": "os-pkgs",
+      "Vulnerabilities": [
+        {
+          "Status": "affected",
+          "PkgName": "fixture",
+          "Severity": "HIGH",
+          "Title": "Fixture finding",
+          "VulnerabilityID": "CVE-FAKE-TEST",
+          "FixedVersion": "1.1",
+          "InstalledVersion": "1.0"
+        }
+      ],
+      "Type": "debian",
+      "Target": "fixture (debian 12)",
+      "Packages": [
+        {
+          "Name": "fixture",
+          "Identifier": {
+            "PURL": "pkg:deb/debian/fixture@1.0?distro=debian-12"
+          },
+          "ID": "fixture@1.0",
+          "Version": "1.0"
+        }
+      ]
+    }
+  ],
+  "ArtifactName": "https-portal-fixture"
+}

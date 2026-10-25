@@ -1,0 +1,92 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.7",
+  "serialNumber": "urn:uuid:88b77b12-6396-4fb2-b99e-9164bdc323eb",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-10-25T05:20:22+00:00",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "manufacturer": {
+            "name": "Aqua Security Software Ltd."
+          },
+          "group": "aquasecurity",
+          "name": "trivy",
+          "version": "0.76.1"
+        }
+      ]
+    },
+    "component": {
+      "bom-ref": "d95e6f0a-9fe5-4817-875d-c9a1fe93c773",
+      "type": "container",
+      "name": "https-portal-fixture",
+      "properties": [
+        {
+          "name": "aquasecurity:trivy:ImageID",
+          "value": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        {
+          "name": "aquasecurity:trivy:SchemaVersion",
+          "value": "2"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "2b81e19d-833f-451c-b5ec-c5f3b615ec03",
+      "type": "operating-system",
+      "name": "debian",
+      "version": "12",
+      "properties": [
+        {
+          "name": "aquasecurity:trivy:Class",
+          "value": "os-pkgs"
+        },
+        {
+          "name": "aquasecurity:trivy:Type",
+          "value": "debian"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:deb/debian/fixture@1.0?distro=debian-12",
+      "type": "library",
+      "name": "fixture",
+      "version": "1.0",
+      "purl": "pkg:deb/debian/fixture@1.0?distro=debian-12",
+      "properties": [
+        {
+          "name": "aquasecurity:trivy:PkgID",
+          "value": "fixture@1.0"
+        },
+        {
+          "name": "aquasecurity:trivy:PkgType",
+          "value": "debian"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "2b81e19d-833f-451c-b5ec-c5f3b615ec03",
+      "dependsOn": [
+        "pkg:deb/debian/fixture@1.0?distro=debian-12"
+      ]
+    },
+    {
+      "ref": "d95e6f0a-9fe5-4817-875d-c9a1fe93c773",
+      "dependsOn": [
+        "2b81e19d-833f-451c-b5ec-c5f3b615ec03"
+      ]
+    },
+    {
+      "ref": "pkg:deb/debian/fixture@1.0?distro=debian-12",
+      "dependsOn": []
+    }
+  ],
+  "vulnerabilities": []
+}

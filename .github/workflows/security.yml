@@ -1,0 +1,67 @@
+name: Security report
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 21 * * *' # 06:17 JST; default branch only
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-report:
+    name: security-report
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prepare image and DB, then collect offline security evidence
+        shell: pwsh
+        timeout-minutes: 40
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          ./dev/security/check-contracts.ps1
+          $image = 'https-portal-security:' + $env:GITHUB_SHA
+          & docker build --progress=plain --tag $image .
+          if ($LASTEXITCODE -ne 0) { throw 'Product image build failed' }
+          $prepared = ./dev/prepare_p3_security.ps1
+          ./dev/check_p3_security.ps1 -PortalImage $image -PreparationFile $prepared.PreparationFile
+          $resultDir = Get-ChildItem dev/test-results/p3-security -Directory | Sort-Object Name | Select-Object -Last 1
+          $summary = Get-Content -Raw -LiteralPath (Join-Path $resultDir.FullName 'summary.json') | ConvertFrom-Json
+          $lines = @('## Security collection (report-only)', '', 'Findings do not enforce a vulnerability threshold in this phase.', '', '| Severity | Findings |', '|---|---:|')
+          foreach ($severity in @('CRITICAL','HIGH','MEDIUM','LOW','UNKNOWN')) {
+            $lines += ('| ' + $severity + ' | ' + $summary.severityCounts.$severity + ' |')
+          }
+          $lines += @('', ('Image ID: `' + $summary.imageId + '`'), '', 'Binary/script coverage gaps are recorded in external-components.json.')
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ($lines -join "`n")
+
+      - name: Upload security evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        timeout-minutes: 3
+        with:
+          name: security-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            dev/test-results/p3-security/*/result.json
+            dev/test-results/p3-security/*/summary.json
+            dev/test-results/p3-security/*/vulnerabilities.json
+            dev/test-results/p3-security/*/sbom.cdx.json
+            dev/test-results/p3-security/*/external-components.json
+            dev/test-results/p3-security/*/artifacts.sha256
+            dev/test-results/p3-security/*/*.stderr.log
+            dev/test-results/p3-security-preparation/*/prepared.json
+            dev/test-results/p3-security-preparation/*/*.stderr.log
+          if-no-files-found: warn
+          include-hidden-files: false
+          retention-days: 14

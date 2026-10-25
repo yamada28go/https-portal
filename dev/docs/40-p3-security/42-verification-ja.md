@@ -265,3 +265,99 @@ Docker DesktopのLinux Engineへ接続できる通常のPowerShellで実行す�
 - tls-policyは両回S-T07/S-T08成功。直前の故意変更検知後、mutationなしの新規projectで通常契約へ正常復帰したことを確認。
 
 判定：手順5のローカル通常試験・故意変更検知・正常復帰・全体回帰の受入は成功。証跡はdev/test-results/p2-integration/20261025t024745z-c4d9ac62/。今回のTLS変更を含むGitHub Actions成功とartifactの全13件/cleanup照合は引き続き未確認。
+
+## 最新：TLS変更のGitHub Actions push実行成功（2026-10-25）
+
+利用者提供の[run 40163898918](https://github.com/yamada28go/https-portal/actions/runs/40163898918)をブラウザーで照合した。
+
+- commit：2fe7819953fa05c9a727a85ffa95aa9b387ef115（test: add TLS and certificate regression checks）。
+- 起動：push、2026-10-25 13:59 JST、Tests #4。全体Status Success、所要4m55s。
+- lint-and-unit：成功、1m2s。
+- docker-smoke：成功、4m53s。
+- artifact：integration-test-evidence-40163898918-1（176KB）、unit-test-evidence-40163898918-1（16.6KB）の2件が生成されている。
+
+判定：今回のTLS変更を含むpush実行の両ジョブ成功を確認した。artifactのダウンロードとログ詳細はサインインが必要であり、内部の全13件・cleanupは未照合。公開の成功表示、ローカル26件成功、artifact内容確認を区別する。PR/手動実行、連続5回、必須チェック・マージ阻止は別途追跡を継続する。
+
+## 手順6初期：脆弱性レポート・SBOM収集基盤（2026-10-25）
+
+状態：report-onlyの実装済み・製品イメージの初回受入待ち。重大度によるブロック、期限付き例外、必須チェック設定はまだ導入していない。
+
+追加：dev/prepare_p3_security.ps1、dev/check_p3_security.ps1、dev/securityの固定設定・共通関数・契約試験/fixture、独立の.github/workflows/security.yml。Trivy 0.76.1と公式manifest SHA-256を固定した。準備はpull/DB取得、検査は準備済み資材とnetwork noneでarchiveを検査し、同じJSONからSBOMへ変換する。
+
+| 確認 | 結果 |
+|---|---|
+| 固定版 | 公式release、Docker Hub manifestのcontent SHA-256、実CLI archiveの公式checksumを照合。Trivy依存DBのschema 2も固定版ソースで確認 |
+| 構文・workflow | PowerShell 7/5.1の構文成功、actionlint 1.7.12成功。Windows PowerShell 5.1での実行検証はこのホストのexecution policy制約で未実施 |
+| データ契約 | PS7で17件成功。Critical/Highはreport-only、空/不正・ID違い・古い/変更DBを拒否し、ImageConfigを除去 |
+| Docker代役 | 正常、image不足、古いDB、scan失敗、image ID違い、壊れたJSON/SBOM、DB途中変更、cleanup失敗、DB download失敗の10件成功。実検査とは区別 |
+| 実CLI smoke | 合成Docker archive（製品ではない）を実Trivy＋実DBで検査。package 2件、Critical 1/High 9/Medium 14/Low 25を収集し、非公開設定文字列を除去、SBOM変換とImageID対応を確認。重大検出でも収集が成功する仕様を実証 |
+| 製品実行 | Docker Engineのnamed pipeがpermission deniedで準備のengine段階に停止。20261025t053446z-9e6f05ee。scanner pull/製品検査には未到達 |
+| 未受入 | 製品イメージの実レポート/SBOM、今回のsecurity-report Actions、artifact内容・部品網羅性。P3全体の完了とはしない |
+
+実CLI smokeはネットワーク遮断を施したホストでの検査ではない。ソフトウェアのoffline flagsを指定した互換性検証であり、Docker network noneの実証は利用者の製品検査で確認する。製品・既存試験・Tests workflowは変更していない。
+
+[45 収集の準備・実行手順](45-security-collection-guide-ja.md)を参照。補助台帳は外部部品のENV宣言版だけであり、取得物hash・CVE網羅性を未確立として残す。秘密情報/開発Gemの検査、CodeQL、供給元検証、依存修正は別工程。
+
+手順6初期の最終証跡：dev/test-results/p3-security-harness/20261025T053931Z/。合成イメージの実CLI検証と代役結果を製品結果から隔離し、入力hashを記録。最終PowerShell 7/5.1構文・actionlintも成功。DB本体やimage archiveはQA成果物へ複製していない。
+
+
+## Java DB準備漏れの修正（2026-10-25）
+
+利用者実行20261025t054616z-737c68daはvulnerability-scanで失敗。Java解析がJava DBを要求した一方、準備処理は脆弱性DBだけを取得していた。--skip-java-db-updateは初回DB取得の代わりにならない。result.jsonでcleanup=passedを確認した。
+
+修正：準備段階で--download-java-db-onlyも実行し、java-db/trivy-java.dbとmetadata.jsonのhash/metadataをreceiptへ保存。Java DBはschema 1・UpdatedAtの既定最大168時間で検証する。オフライン検査では両DBを専用work volumeへコピーし、検査前後に両DBのhashを照合する。Java DBのない旧receiptはimage export前に再準備を要求する。network none・更新禁止・report-onlyを維持。製品再buildは不要。
+
+検証：PowerShell 7/5.1構文成功、PS7データ契約23件、Docker代役15件成功（Java DB不足/古さ/途中変更、旧receipt、Java DB取得失敗を追加）。実Trivy 0.76.1で実Java DBを取得し、Java JARを加えた合成イメージをoffline flagsで検査。commons-lang3を検出し、秘匿設定除去・SBOM生成・ImageID対応を確認した。Java DB本体は約1.2GBで、脆弱性DBと合わせた検査用コピー容量も必要。native smokeは物理通信遮断や製品検査の受入ではない。
+
+製品の再受入は修正後のprepare→checkの利用者実行待ち。GitHub Actionsも同じprepare/checkを使用するため修正が適用される。
+証跡：dev/test-results/p3-security-harness/java-db-fix-20261025T060051Z/。
+
+## Docker側IDとTrivy config IDの照合修正（2026-10-25）
+
+利用者実行20261025t061444z-dc00d81c：両DBの事前検証、image export、Trivyスキャンは成功。Debian 13.7の235 OS packageとGo binaryの解析後、レポートのschema/type/IDをまとめて判定する箇所で失敗した。cleanup=passed。生レポートは規定どおり削除されており、過去のreport ImageID自体は確認できないため、失敗理由を完全確定したとは扱わない。
+
+調査：Docker側IdがRepoDigestと同じ値であり、固定scannerでもmanifest digestと同じ値だった。Docker側がmanifest/index digestを返す環境で、Trivyのconfig digestを直接比較している実装上の問題を確認した（今回の直接原因としては推定）。schema/type/IDの失敗メッセージも分離した。
+
+修正：指定IDのdocker image save直後、固定scannerのnetwork noneコンテナでarchive manifest.jsonとconfig内容のSHA-256を検証する。manifestは1件、configは64桁.jsonまたはblobs/sha256/64桁に限定し、内容hashとパス中digestの一致を要求する。config本文をログへ保存しない。JSONとSBOMはこの独立計算済みconfig digestへ照合し、結果が供給したIDを無条件採用しない。result/summaryにはDocker imageIdとscanImageId、archiveIdentityを併記し、形式が正しいreportImageIdも診断として記録する。検査・cleanup・report-onlyの仕様は維持。
+
+検証：データ契約31件、Docker代役17件成功。Docker IDとconfig IDが異なる正常系を受け入れ、wrong report ID、archive hash不一致、複数manifest、不正パス等は拒否する。実ファイルをnative tarで読み、従来形式/OCI config path形式の両archiveで独立計算したconfig digestと、前段の実Trivy合成イメージレポート/SBOMのID一致を確認した。このnative adapter検証をDocker隔離や製品の実受入とは扱わない。
+
+再受入：成功済み準備20261025t060213z-c6489bf3のreceiptを再利用し、checkだけ再実行する。製品のbuild・scanner/DBの再取得は不要（鮮度・hash検査は引き続き実施）。今回の製品受入は利用者再実行待ち。
+
+一次資料：Trivy v0.76.1のimage artifact実装 https://github.com/aquasecurity/trivy/blob/v0.76.1/pkg/fanal/artifact/image/image.go およびDocker containerd image store https://docs.docker.com/engine/storage/containerd/ 。
+証跡：dev/test-results/p3-security-harness/image-identity-fix-20261025T064228Z/。
+
+## 準備receiptの相対パス解決修正（2026-10-25）
+
+利用者実行20261025t070804z-55ec01f1はpreflightでCannot read JSON: prepared.json。対象の成功済みreceiptは存在し、PowerShellのGet-Content/ConvertFrom-Jsonで正常に解析できた。.NETのCurrentDirectoryとPowerShellの現在位置を異ならせることで、従来のReadAllTextに相対パスを直接渡す実装の失敗を再現した。
+
+Read-SecurityJsonはSessionState.Path.GetUnresolvedProviderPathFromPSPathでPowerShellの現在位置から絶対パスへ解決してからReadAllTextするよう修正。JSON解析エラーを秘匿する既存仕様は維持。データ契約32件が成功し、現在位置とprocess directoryが異なる場合の相対/絶対パスの同値性、および実prepared.jsonの相対パス読み込み成功（prepared、両DBあり）を確認した。Docker検査は今回開始前の失敗であり、再build/DB再取得は不要。製品スキャンの再受入は引き続き利用者実行待ち。
+
+## 製品イメージの初回収集受入成功（2026-10-25）
+
+利用者実行20261025t071211z-49f60b78の成果物を照合した。実行時刻16:12:11〜16:17:34 JST、result=collected、stage=complete、mode=offline-report-only、cleanup=passed、thresholdEnabled=false。手順6初期のローカル収集は成功。脆弱性の解消・重大度ゲート・P3全体の完了を意味しない。
+
+- 選択したDocker ID：sha256:50799eef7566b2502e16e154f4829b8ef0997b86f922cf073f8bdf426b9df400。
+- archive SHA-256：306cec9eec2a8e5ed8858818874d30888176f5953867f291b336fd67a53ba7b2。
+- archive config digest / scanImageId / reportImageId：sha256:b4161ae46c5e75dee0fa5e373fa6dff4510b4984330aaca3a93d39337e6c3bc4。SBOMのImageIDも一致。Docker側とconfig側のIDが異なる実ケースを受入できた。
+- Trivy 0.76.1。準備20261025t060213z-c6489bf3の脆弱性DB/Java DBとreceiptのhash一致を確認。検査前後のmetadata/hashログも正常。検査は既存コードのnetwork none実行で成功した。ホスト全体の通信遮断を示すものではない。
+- OS：Debian 13.7。package entry 272（OS 241 / Go 31）、CycloneDX component 274。TrivyログのOS pkg_num=235と、収集JSONのpackage entry数は集計段階が異なるため同数とみなさない。
+- vulnerabilities.json / sbom.cdx.json / summary.json / external-components.jsonのSHA-256がartifacts.sha256と全件一致。ImageConfigは除去済み。archive/raw reportは削除済み、work-cleanupログは正常。
+
+| 重大度 | 検出件数 |
+|---|---:|
+| Critical | 12 |
+| High | 135 |
+| Medium | 198 |
+| Low | 237 |
+| Unknown | 18 |
+| 合計 | 600 |
+
+検出件数はパッケージ等ごとのレコード数であり、CVEの重複を含む。VulnerabilityIDの異なり数は315。OS側532件（Critical 11 / High 99）、Go側68件（Critical 1 / High 36）。これは収集データの集計であり、到達可能性や修正要否の判定はまだしていない。
+
+Criticalの初期内訳：Ruby関連が10レコード（libruby3.3/ruby3.3の各5、IDは重複）、libxml2が1、Go stdlibが1。Ruby/libxml2はこのレポートのFixedVersion欄が空であり「将来も修正不可」とは解釈しない。Go stdlib v1.25.5はレポートに修正版の記載あり。次工程で一次資料、導入経路、実際の利用箇所・到達可能性、修正方法を確認し、依存更新と期限付き例外を個別判断する。
+
+補助台帳：s6-overlay v3.2.3.0、docker-gen 0.16.3、acme-tiny 5.0.3のENV宣言版を取得。実物hashや自動SBOM/CVE網羅性は引き続き未確立であり、初回収集成功だけで台帳完備としない。
+
+証跡：dev/test-results/p3-security/20261025t071211z-49f60b78/。
+次は今回変更のcommit/push後にsecurity-report Actionsの成功とartifact内容を照合する。並行してCritical/Highの一次分類を行う。重大度ゲートや広範な例外除外を先に有効化しない。
