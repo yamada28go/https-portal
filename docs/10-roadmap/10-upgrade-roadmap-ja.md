@@ -131,7 +131,7 @@ CI の注意：`pull_request_target` で外部 PR のコードを高権限実行
 
 | PR | 内容 | 大まかな差分 | 検証／レビュー要件 |
 |---|---|---|---|
-| PR-01 | 基準とテスト仕様を確定 | `docs/test-plan-ja.md`、現行 13 ケースの実行結果、失敗一覧 | 現状と将来要件を区分して合意 |
+| PR-01 | 基準とテスト仕様を確定 | `docs/15-p1-contracts/https-portal-p1-detailed-test-plan-ja.md`、現行 13 ケースの実行結果、失敗一覧 | 現状と将来要件を区分して合意 |
 | PR-02 | UT 独立化・契約試験 | `spec/models`、`spec/config`、`spec/certs`、Docker 起動を必要としない helper | PR で短時間に安定実行 |
 | PR-03 | CI 最小版をマージ必須に | `.github/workflows/tests.yml`、Ruby / Bundler 調整 | UT の成功でのみマージ可 |
 | PR-04 | Docker IT のモダン化 | Compose V2、`docker-machine` 排除、内部テスト用ドメイン、isolated volume、timeout | 再実行で安定・外部 ACME 不要 |

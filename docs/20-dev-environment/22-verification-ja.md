@@ -72,11 +72,11 @@ Compose、PowerShell、開発環境計画・手順・検証記録、改行設定
 
 ### P1 UTの実装
 
-54例のUT・設定契約を追加し、testサービスの既定対象をドメイン解析とspec/contractsへ変更した。dev.ps1 P1で構文・順序変更・単独実行・Mutationをまとめて実行できる。構文はPrismで確認し、既存入力・期待値26行の保持をHEADとの差分で確認した。実RSpecとMutationはDocker Engine接続拒否により未実行。詳細はプロジェクトdocsのtest-contract-matrix-ja.mdを参照。
+54例のUT・設定契約を追加し、testサービスの既定対象をドメイン解析とspec/contractsへ変更した。dev.ps1 P1で構文・順序変更・単独実行・Mutationをまとめて実行できる。構文はPrismで確認し、既存入力・期待値26行の保持をHEADとの差分で確認した。実RSpecとMutationはDocker Engine接続拒否により未実行。詳細は[P1テスト対応表](../15-p1-contracts/test-contract-matrix-ja.md)を参照。
 
 ### C-02追加後
 
-既存54例の実RSpec・3 seed・各spec単独・M01〜M05検知と復元は利用者提供出力で成功確認済み。C-02の29例追加により既定対象を83例へ拡張した。追加後はPrism構文、ケース数、Compose実行パス等を確認したが、83例の実行はこのチャットのDocker接続制約により未確認。最新状況はプロジェクトdocs/c02-input-contract-ja.mdを参照。
+既存54例の実RSpec・3 seed・各spec単独・M01〜M05検知と復元は利用者提供出力で成功確認済み。C-02の29例追加により既定対象を83例へ拡張した。追加後はPrism構文、ケース数、Compose実行パス等を確認したが、83例の実行はこのチャットのDocker接続制約により未確認。最新状況はプロジェクトdocs/15-p1-contracts/c02-input-contract-ja.mdを参照。
 
 ### Windows PowerShellでの出力リダイレクト修正
 
@@ -92,4 +92,4 @@ Push-Location/Pop-Locationを除去し、絶対パスのCompose設定を使っ�
 
 利用者の指示で現行動作を正解とし、ACME署名12例とNginx書き込み・reload18例を追加。既定対象は113例、MutationはM01〜M08へ拡張した。PrismによるRuby構文、30例のID・件数、単独実行件数の合計113、Mutationの一意な変更箇所、Compose構文、git diff --checkを確認した。製品コード・依存バージョン・既存83例は変更していない。
 
-今回の113例と追加Mutationは、Docker Engineへの接続拒否によりこのチャットからは未実行。以前の83例とM01〜M05の成功ログとは区別する。詳細な期待値はプロジェクトdocs/c07-c08-current-contract-ja.mdを参照。
+今回の113例と追加Mutationは、Docker Engineへの接続拒否によりこのチャットからは未実行。以前の83例とM01〜M05の成功ログとは区別する。詳細な期待値はプロジェクトdocs/15-p1-contracts/c07-c08-current-contract-ja.mdを参照。

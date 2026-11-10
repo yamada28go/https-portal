@@ -74,7 +74,7 @@ Stop後の起動は次を使う。イメージ変更後はSetupを再実行す�
 docker compose -p https-portal-dev -f dev/compose.dev.yaml up -d dev
 ```
 
-P1のUTは次の直接コマンドでも実行できる。113例の対応は[テスト対応表](../../../docs/test-contract-matrix-ja.md)を参照。
+P1のUTは次の直接コマンドでも実行できる。113例の対応は[テスト対応表](../15-p1-contracts/test-contract-matrix-ja.md)を参照。
 
 ```powershell
 docker compose -p https-portal-dev -f dev/compose.dev.yaml run --rm test bundle exec rspec spec/models/domain_spec.rb spec/models/domain_input_spec.rb spec/contracts --format documentation
@@ -132,7 +132,7 @@ testにはCodex volumeを渡さず、Gem volumeを読み取り専用、ネット
 .\dev\dev.ps1 P1
 ```
 
-構文、113例の3 seed、各spec単独、M01〜M08の検知と復元を検査する。証跡はdev/test-results/p1-check.log（Git対象外）。Mutationは一時コピー上で行い、元の製品コードは変更しない。詳細は[Mutation手順](../../../docs/mutation-check-ja.md)を参照。
+構文、113例の3 seed、各spec単独、M01〜M08の検知と復元を検査する。証跡はdev/test-results/p1-check.log（Git対象外）。Mutationは一時コピー上で行い、元の製品コードは変更しない。詳細は[Mutation手順](../15-p1-contracts/mutation-check-ja.md)を参照。
 
 ## PowerShellの画面出力をログへ保存
 

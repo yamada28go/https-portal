@@ -21,6 +21,8 @@ Docker Hub page:
 
 Thanks to [@yamada28go](https://github.com/yamada28go), there is a [Japanese version of this README](/README-ja.md) available. However, due to my inability to understand Japanese, I can't guarantee that the Japanese version is up-to-date.
 
+Development, test contracts, CI, and security documentation: [documentation index (Japanese)](docs/00-index-ja.md).
+
 ## Table of Contents
 
 - [HTTPS-PORTAL](#https-portal)

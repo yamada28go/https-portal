@@ -162,7 +162,7 @@ spec/ci/
   support/                 # lifecycle、HTTP/TLS、診断
   fixtures/                # echo、static。秘密鍵なし
 dev/dev.ps1               # CiUnit/CiIntegration等の薄い入口
-dev/docs/
+docs/
   00-index-ja.md
   30-p2-ci/
     30-execution-guide-ja.md
@@ -226,10 +226,10 @@ dev/docs/
 
 ### ローカルの根拠
 
-- [P1対応表](../../../docs/test-contract-matrix-ja.md)
-- [既知挙動](../../../docs/known-behavior-gaps-ja.md)
-- [C-07/C-08現行契約](../../../docs/c07-c08-current-contract-ja.md)
-- [P1自動検証script](../../check_p1.rb)
+- [P1対応表](../15-p1-contracts/test-contract-matrix-ja.md)
+- [既知挙動](../15-p1-contracts/known-behavior-gaps-ja.md)
+- [C-07/C-08現行契約](../15-p1-contracts/c07-c08-current-contract-ja.md)
+- [P1自動検証script](../../dev/check_p1.rb)
 - [開発環境手順](../20-dev-environment/21-guide-ja.md)
 - 保存実行ログ：dev/test-results/p1-console.log、dev/test-results/p1-check.log（Git対象外）
 

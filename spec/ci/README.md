@@ -38,24 +38,24 @@ host-run.jsonはDocker起動側、baseline.jsonはコンテナ内検証の記録
 
 コンテナは終了時に削除する。ローカルのビルドイメージ・cacheと結果ログは残る。個人名・アカウント名・絶対パスを公開メモへ転記しない。
 
-[検証記録](../../dev/docs/30-p2-ci/32-verification-ja.md)
+[検証記録](../../docs/30-p2-ci/32-verification-ja.md)
 
 ## GitHub Actions
 
-Tests / lint-and-unitも同じスクリプトを使用する。[CI実行・受入手順](../../dev/docs/30-p2-ci/33-ci-test-guide-ja.md)を参照。Linuxでは実行専用の結果ディレクトリだけ書き込みを許可する。GitHubでの成功は実行後に確認する。
+Tests / lint-and-unitも同じスクリプトを使用する。[CI実行・受入手順](../../docs/30-p2-ci/33-ci-test-guide-ja.md)を参照。Linuxでは実行専用の結果ディレクトリだけ書き込みを許可する。GitHubでの成功は実行後に確認する。
 
 ## Docker試験基盤（P2-03）
 
-プロジェクトルートで `.\dev\check_p2_integration.ps1 -Repeat 2`。[実行・受入手順](../../dev/docs/30-p2-ci/34-integration-guide-ja.md)を参照。実Dockerの起動確認は利用者側で行う。
+プロジェクトルートで `.\dev\check_p2_integration.ps1 -Repeat 2`。[実行・受入手順](../../docs/30-p2-ci/34-integration-guide-ja.md)を参照。実Dockerの起動確認は利用者側で行う。
 
-P2-04の重要契約を一括実行：`.\dev\check_p2_integration.ps1 -Scenario all`。[試験内容・受入手順](../../dev/docs/30-p2-ci/35-integration-contracts-ja.md)を参照。実Dockerの実行受入は利用者側で行う。
+P2-04の重要契約を一括実行：`.\dev\check_p2_integration.ps1 -Scenario all`。[試験内容・受入手順](../../docs/30-p2-ci/35-integration-contracts-ja.md)を参照。実Dockerの実行受入は利用者側で行う。
 
 ## 準備済みイメージによる実行（P3 手順2）
 
 build・pullを行わない入口を追加した。UTは `-UsePreparedImages -UnitImage <ローカル参照>`、結合試験は `-UsePreparedImages -PortalImage <ローカル参照> -TestImage <ローカル参照>` を指定する。指定なしは従来どおりbuildを含む。
 
-[実行手順・資材準備・制約](../../dev/docs/40-p3-security/41-execution-guide-ja.md)を参照。通信遮断下での実試験受入は別途必要。
+[実行手順・資材準備・制約](../../docs/40-p3-security/41-execution-guide-ja.md)を参照。通信遮断下での実試験受入は別途必要。
 
-P3手順4：IP制限は -Scenario security（ip/ip-auth）で実行する。allは既存8件＋IP制限2件の計10件。[準備・実行手順](../../dev/docs/40-p3-security/43-ip-access-guide-ja.md)に従いtoolsイメージを更新する。
+P3手順4：IP制限は -Scenario security（ip/ip-auth）で実行する。allは既存8件＋IP制限2件の計10件。[準備・実行手順](../../docs/40-p3-security/43-ip-access-guide-ja.md)に従いtoolsイメージを更新する。
 
-P3手順5：TLS/証明書異常系は -Scenario tls（3件）。securityはIPを含む5件、allは13件。[準備・故意変更検知・実行手順](../../dev/docs/40-p3-security/44-tls-security-guide-ja.md)を参照。toolsの更新が必要。
+P3手順5：TLS/証明書異常系は -Scenario tls（3件）。securityはIPを含む5件、allは13件。[準備・故意変更検知・実行手順](../../docs/40-p3-security/44-tls-security-guide-ja.md)を参照。toolsの更新が必要。

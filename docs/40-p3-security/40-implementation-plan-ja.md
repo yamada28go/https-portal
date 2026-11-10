@@ -153,6 +153,6 @@ SARIF送信権限がないfork PRの扱いを実確認する。送信不可と�
 ## 8. 参照・後続文書
 
 - P2：[詳細計画](../30-p2-ci/31-implementation-plan-ja.md)、[結合試験](../30-p2-ci/35-integration-contracts-ja.md)、[Actions受入](../30-p2-ci/36-actions-integration-guide-ja.md)
-- P1：`docs/test-contract-matrix-ja.md`、`spec/contracts/nginx_access_spec.rb`、`spec/contracts/nginx_tls_spec.rb`
-- Trivy：[脆弱性検査](https://trivy.dev/docs/dev/guide/scanner/vulnerability/)、[SBOM](https://trivy.dev/docs/dev/guide/supply-chain/sbom/)。本書では導入方針を確認。CLI/API・固定版は実装時に再確認する。
+- P1：`docs/15-p1-contracts/test-contract-matrix-ja.md`、`spec/contracts/nginx_access_spec.rb`、`spec/contracts/nginx_tls_spec.rb`
+- Trivy：[脆弱性検査](https://trivy.docs/dev/guide/scanner/vulnerability/)、[SBOM](https://trivy.docs/dev/guide/supply-chain/sbom/)。本書では導入方針を確認。CLI/API・固定版は実装時に再確認する。
 - 今後追加：41-execution-guide-ja.md（操作と障害対応）、42-verification-ja.md（実行証跡）。本書から未作成文書へのリンクは置かない。

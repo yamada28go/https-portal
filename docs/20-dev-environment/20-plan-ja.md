@@ -6,7 +6,7 @@
 作成日：2026-10-24（日本時間）  
 ステータス：構築前の計画。コマンドは実施予定であり、検証済みの記録ではない。  
 対象：`https-portal`のプロジェクトルート  
-関連：`docs/https-portal-p1-detailed-test-plan-ja.md`
+関連：`docs/15-p1-contracts/https-portal-p1-detailed-test-plan-ja.md`
 
 ## 1. 目的と範囲
 
@@ -71,8 +71,8 @@ Docker DesktopのLinuxバックエンドを使い、PowerShellからComposeを�
 | dev/entrypoint.sh | 最小初期化と権限確認。起動時の自動更新・Gem導入は行わない |
 | dev/compose.dev.yaml | dev/test、マウント、named volume、ネットワーク設定 |
 | dev/.gitattributes | 既存設定を確認し、追加シェルスクリプトだけLF改行を指定 |
-| dev/docs/20-dev-environment/21-guide-ja.md | 初回構築、日常操作、認証、再構築、障害対応 |
-| dev/docs/20-dev-environment/22-verification-ja.md | 実測バージョン、結果、所要時間、残課題 |
+| docs/20-dev-environment/21-guide-ja.md | 初回構築、日常操作、認証、再構築、障害対応 |
+| docs/20-dev-environment/22-verification-ja.md | 実測バージョン、結果、所要時間、残課題 |
 | Gemfile.lock（必要時のみ） | Linux platform対応。依存バージョンを維持 |
 
 build contextはComposeファイルと同じdevディレクトリ（context: .）とし、プロジェクト全体や認証情報をイメージへCOPYしない。既存.dockerignoreは変更しない。製品ソース、製品用Dockerfile、本番設定、Makefileは環境構築のために変更しない。
@@ -186,7 +186,7 @@ Gemの再ダウンロード不要、Codex設定・認証の保持、テスト再
 - [ ] 認証情報がGit・イメージ・ログに入っていない。
 - [ ] ネットワークなしで既存ドメイン解析テストに成功した。
 - [ ] 再作成後もGemとCodex設定・認証を保持し、テストが再成功した。
-- [ ] 構築手順・実測・残課題をdev/docsに記録した。
+- [ ] 構築手順・実測・残課題をdocsに記録した。
 
 ## 9. 工数と後続
 
@@ -198,7 +198,7 @@ Gemの再ダウンロード不要、Codex設定・認証の保持、テスト再
 
 公式資料確認日：2026-10-24。実装時にはCLIオプションと利用要件を再確認する。
 
-- [P1詳細実施計画](../../../docs/https-portal-p1-detailed-test-plan-ja.md)
+- [P1詳細実施計画](../15-p1-contracts/https-portal-p1-detailed-test-plan-ja.md)
 - [Codex CLI：OpenAI公式](https://learn.chatgpt.com/docs/codex/cli)
 - [認証・device code・認証情報保存：OpenAI公式](https://learn.chatgpt.com/docs/auth)
 - [Codex権限とDev Containers：OpenAI公式](https://learn.chatgpt.com/docs/agent-approvals-security#run-codex-in-dev-containers)

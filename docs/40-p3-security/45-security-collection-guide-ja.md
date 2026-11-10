@@ -95,7 +95,7 @@ dev/security/check-contracts.ps1で、重大検出を収集できること、空
 
 利用者は準備と製品の検査を実行し、Evidenceを共有する。result=collected、image ID/DB対応、SBOM内容、外部部品の不足を照合した後、今回変更のActionsを受け入れる。次段階で初回検出を分類し、期限付き例外と重大度ゲートの仕様を確定する。
 
-一次資料：[Trivy air gap](https://trivy.dev/docs/latest/guide/advanced/air-gap/)、[DB設定](https://trivy.dev/docs/dev/configuration/db/)、[公式release](https://github.com/aquasecurity/trivy/releases/tag/v0.76.1)。固定版のhelpとソースでも互換を確認した。
+一次資料：[Trivy air gap](https://trivy.docs/latest/guide/advanced/air-gap/)、[DB設定](https://trivy.docs/dev/configuration/db/)、[公式release](https://github.com/aquasecurity/trivy/releases/tag/v0.76.1)。固定版のhelpとソースでも互換を確認した。
 Java DB準備漏れの修正後は準備を再実行する。実Java DBとJava入り合成イメージで検査・SBOM変換、データ契約23件、Docker代役15件を確認した。製品実検査は引き続き再実行待ち。詳細は検証記録を参照。
 
 ID照合修正後は、Java DBを含む成功済みprepared.jsonをそのまま再利用してcheckだけ再実行できる。Docker側のIDはmanifest/index digestとなる場合があり、Trivyのconfig digestと直接比較しない。既存の生レポートはcleanupで削除済みのため、過去の失敗で実際に報告されたIDは未確定。再実行では検証済みdigestをresult.jsonへ記録する。

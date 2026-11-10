@@ -254,7 +254,7 @@ docker version
 .\dev\check_p2_baseline.ps1
 ```
 
-[最小環境の説明](../../../spec/ci/README.md)を参照。実行はHEAD・作業差分・入力fingerprintを保存する。新しい実行IDのbaseline.jsonがpassedとなり、p1-check.logで全項目成功と入力不変が確認できた後にP2-01完了へ更新する。
+[最小環境の説明](../../spec/ci/README.md)を参照。実行はHEAD・作業差分・入力fingerprintを保存する。新しい実行IDのbaseline.jsonがpassedとなり、p1-check.logで全項目成功と入力不変が確認できた後にP2-01完了へ更新する。
 
 ## P2-01完了条件
 
